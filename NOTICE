@@ -12,6 +12,10 @@ licence of this project's own code, and they are not ours to relicense.
 A few figures of the fictional persona (savings, rent, goals) and of the starter kit (salaries, expenses) are
 quoted in `engine/assumptions.py` and `engine/scenarios/alexia.json`, each with its source file.
 
+`starter-kit/README.md` refers to a NOTICE.md file and a resources/ folder from the original challenge repository.
+They are not included here. The rights for the challenge materials included in this repository are those stated
+in this NOTICE and in DISCLAIMER.md.
+
 Fonts
 -----
 Barlow and Barlow Condensed, in `web/vendor/barlow/`, are distributed under the SIL Open Font License 1.1.
