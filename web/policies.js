@@ -2,7 +2,7 @@
 // Le plan figé et les trois politiques en lignes, les mondes en colonnes. Dans chaque case, au même niveau : les
 // objectifs gardés et ce que devient le master. Puis l'emprunt maximal et le regret.
 // Chaque chiffre vient de la route /policies, donc du moteur ; rien n'est calculé ici.
-import { T } from './texts.fr.js';
+import { T } from './i18n.js';
 import { chf, plain } from './format.js';
 
 const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

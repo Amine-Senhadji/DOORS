@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from engine.i18n import say
 from engine.contract import Category as C
 from engine.contract import Flow, Loan, Operation, State, World
 
@@ -59,13 +60,17 @@ def validate(ops: tuple[Operation, ...]) -> None:
     """Donnée manquante : on refuse clairement plutôt que d'inventer une valeur."""
     for op in ops:
         if op.kind not in REQUIRED_PARAMS:
-            raise ValueError(f"Opération inconnue « {op.kind} ». Vocabulaire : {sorted(REQUIRED_PARAMS)}")
+            raise ValueError(say(f"Unknown operation “{op.kind}”. Vocabulary: {sorted(REQUIRED_PARAMS)}",
+                                 f"Opération inconnue « {op.kind} ». Vocabulaire : {sorted(REQUIRED_PARAMS)}"))
         if not 0 <= op.start <= op.end:
-            raise ValueError(f"Opération « {op.kind} » : intervalle de mois invalide [{op.start}, {op.end}).")
+            raise ValueError(say(f"Operation “{op.kind}”: invalid month interval [{op.start}, {op.end}).",
+                                 f"Opération « {op.kind} » : intervalle de mois invalide [{op.start}, {op.end})."))
         for p in REQUIRED_PARAMS[op.kind]:
             if p not in op.params:
-                raise ValueError(f"Opération « {op.kind} » (mois {op.start}–{op.end}) : paramètre manquant "
-                                 f"« {p} ». Ajoute-le au scénario ou définis l'hypothèse correspondante.")
+                raise ValueError(say(f"Operation “{op.kind}” (months {op.start}–{op.end}): missing parameter "
+                                     f"“{p}”. Add it to the scenario or define the matching assumption.",
+                                     f"Opération « {op.kind} » (mois {op.start}–{op.end}) : paramètre manquant "
+                                     f"« {p} ». Ajoute-le au scénario ou définis l'hypothèse correspondante."))
 
 
 class _Ledger:

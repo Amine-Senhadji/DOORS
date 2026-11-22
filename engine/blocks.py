@@ -13,7 +13,9 @@ from __future__ import annotations
 from fractions import Fraction
 from math import ceil
 
+from engine import english
 from engine.contract import Operation
+from engine.i18n import say
 
 MASTER_YEARS = 2          # Data/scenario-assumptions.csv (AS-P00001-01) : study_duration_years = 2
 PART_TIME_YEARS = 3       # le même master en travaillant : scénario S002 du catalogue, durée choisie par l'équipe
@@ -33,36 +35,50 @@ CITIES = {"job": {"lausanne"}, "job_abroad": {"berlin"}}
 REFUSED_CITIES = {"london": "Londres", "singapore": "Singapour"}
 
 
+def block_name(kind: str) -> str:
+    """Le nom d'un bloc ou d'un tronçon, dans la langue courante."""
+    return say(english.BLOCKS[kind], BLOCKS[kind]["name"] if kind in BLOCKS else "Recherche d'emploi")
+
+
 def normalize(path: list[dict], horizon_months: int) -> list[dict]:
     """Contrôle un trajet et le rend sous sa forme canonique : blocs connus, années entières, période couverte."""
     if not isinstance(path, list) or not path:
-        raise ValueError("Un trajet est une liste d'au moins un bloc.")
+        raise ValueError(say("A route is a list of at least one block.", "Un trajet est une liste d'au moins un bloc."))
     out: list[dict] = []
     for i, raw in enumerate(path, start=1):
         if not isinstance(raw, dict) or "block" not in raw:
-            raise ValueError(f"Bloc n° {i} : il se décrit par un type (block) et une durée en années (years).")
+            raise ValueError(say(f"Block no. {i}: it is described by a type (block) and a length in years (years).",
+                                 f"Bloc n° {i} : il se décrit par un type (block) et une durée en années (years)."))
         block, years, options = raw["block"], raw.get("years"), dict(raw.get("options") or {})
         if block in NOT_YET:
-            raise ValueError(f"Bloc n° {i} : le moteur ne sait pas encore traduire {NOT_YET[block]} (« {block} »).")
+            raise ValueError(say(f"Block no. {i}: the engine cannot translate {english.NOT_YET[block]} yet (“{block}”).",
+                                 f"Bloc n° {i} : le moteur ne sait pas encore traduire {NOT_YET[block]} (« {block} »)."))
         if block not in BLOCKS:
-            raise ValueError(f"Bloc n° {i} : type inconnu « {block} ». Blocs : {sorted(BLOCKS)}")
+            raise ValueError(say(f"Block no. {i}: unknown type “{block}”. Blocks: {sorted(BLOCKS)}",
+                                 f"Bloc n° {i} : type inconnu « {block} ». Blocs : {sorted(BLOCKS)}"))
         if isinstance(years, bool) or not isinstance(years, int) or years < 1:
-            raise ValueError(f"Bloc n° {i} (« {block} ») : la durée est un nombre entier d'années, au moins 1.")
+            raise ValueError(say(f"Block no. {i} (“{block}”): the length is a whole number of years, at least 1.",
+                                 f"Bloc n° {i} (« {block} ») : la durée est un nombre entier d'années, au moins 1."))
         city = options.pop("city", None)
         if city in REFUSED_CITIES:
-            raise ValueError(f"Bloc n° {i} : {REFUSED_CITIES[city]} est refusé, le moteur ne connaît que le franc et l'euro. "
-                             "L'étranger, c'est Berlin.")
+            raise ValueError(say(f"Block no. {i}: {english.REFUSED_CITIES[city]} is refused, the engine only knows the franc and the euro. "
+                                 "Abroad means Berlin.",
+                                 f"Bloc n° {i} : {REFUSED_CITIES[city]} est refusé, le moteur ne connaît que le franc et l'euro. "
+                                 "L'étranger, c'est Berlin."))
         if city is not None and city not in CITIES.get(block, ()):
-            raise ValueError(f"Bloc n° {i} (« {block} ») : la ville « {city} » n'est pas encore traduite par le moteur.")
+            raise ValueError(say(f"Block no. {i} (“{block}”): the city “{city}” is not translated by the engine yet.",
+                                 f"Bloc n° {i} (« {block} ») : la ville « {city} » n'est pas encore traduite par le moteur."))
         if options:
-            raise ValueError(f"Bloc n° {i} (« {block} ») : option inconnue {sorted(options)}.")
+            raise ValueError(say(f"Block no. {i} (“{block}”): unknown option {sorted(options)}.",
+                                 f"Bloc n° {i} (« {block} ») : option inconnue {sorted(options)}."))
         if out and out[-1]["block"] == block:
             out[-1]["years"] += years                 # deux blocs identiques qui se suivent n'en font qu'un
         else:
             out.append({"block": block, "years": years})
     total = 12 * sum(b["years"] for b in out)
     if total != horizon_months:
-        raise ValueError(f"Le trajet couvre {total // 12} ans : il en faut {horizon_months // 12}.")
+        raise ValueError(say(f"The route covers {total // 12} years: {horizon_months // 12} are needed.",
+                             f"Le trajet couvre {total // 12} ans : il en faut {horizon_months // 12}."))
     return out
 
 
@@ -99,7 +115,7 @@ def _translate(path: list[dict], th: dict) -> tuple[list[Operation], list[dict]]
         s, e, kind = f["start"], f["end"], b["block"]
         seniority = {"anciennete_mois": worked} if worked else {}
         master = f["progress"] >= 1
-        leg = {"block": kind, "name": BLOCKS[kind]["name"], "from_month": s, "to_month": e, "catalog_ids": BLOCKS[kind]["catalog_ids"]}
+        leg = {"block": kind, "name": block_name(kind), "from_month": s, "to_month": e, "catalog_ids": BLOCKS[kind]["catalog_ids"]}
         if kind in STUDIES and f["abroad"]:
             ops.append(Operation("demenager", s, s + 1, {"lieu": "CH", "cout_chf": th["cout_demenagement"]}))
         if kind == "master":
@@ -115,7 +131,7 @@ def _translate(path: list[dict], th: dict) -> tuple[list[Operation], list[dict]]
             start = min(e, s + _search_months(th, f))
             if start > s:
                 ops.append(Operation("chercher_emploi", s, start))
-                legs.append({"block": "recherche", "name": "Recherche d'emploi", "from_month": s, "to_month": start, "catalog_ids": []})
+                legs.append({"block": "recherche", "name": block_name("recherche"), "from_month": s, "to_month": start, "catalog_ids": []})
                 leg = {**leg, "from_month": start}
             ops.append(Operation("travailler", start, e, {
                 "salaire_brut_mensuel": th["salaire_apres_master" if master else "salaire_sans_master"],
@@ -155,7 +171,7 @@ def cut(path: list[dict], month: int) -> list[dict]:
 
 
 def _years(n: int) -> str:
-    return "1 an" if n == 1 else f"{n} ans"
+    return say("1 year" if n == 1 else f"{n} years", "1 an" if n == 1 else f"{n} ans")
 
 
 def destinations(path: list[dict], gare_month: int, horizon_months: int, age0: int) -> list[dict]:
@@ -168,9 +184,10 @@ def destinations(path: list[dict], gare_month: int, horizon_months: int, age0: i
     """
     path = normalize(path, horizon_months) if path else []        # au départ, aucun trajet n'est encore suivi
     if not path and gare_month:
-        raise ValueError("Il faut un trajet pour ouvrir une gare après le départ.")
+        raise ValueError(say("A route is needed to open a junction after the departure.", "Il faut un trajet pour ouvrir une gare après le départ."))
     if gare_month % 12 or not 0 <= gare_month < horizon_months:
-        raise ValueError(f"Pas de gare au mois {gare_month} : une gare par an, du mois 0 au mois {horizon_months - 12}.")
+        raise ValueError(say(f"No junction at month {gare_month}: one junction per year, from month 0 to month {horizon_months - 12}.",
+                             f"Pas de gare au mois {gare_month} : une gare par an, du mois 0 au mois {horizon_months - 12}."))
     past, left = cut(path, gare_month), (horizon_months - gare_month) // 12
     progress, last = Fraction(0), None
     for b in past:
@@ -191,33 +208,39 @@ def destinations(path: list[dict], gare_month: int, horizon_months: int, age0: i
     def study(branch_id: str, label: str, block: str) -> dict:
         """Une branche qui mène au master, à plein temps ou en travaillant."""
         if progress >= 1:
-            return {"id": branch_id, "label": label, "available": False, "reason": "Alexia a déjà un master.", "path": None}
+            return {"id": branch_id, "label": label, "available": False, "path": None,
+                    "reason": say("Alexia already has a master's.", "Alexia a déjà un master.")}
         needed = ceil((1 - progress) * (MASTER_YEARS if block == "master" else PART_TIME_YEARS))
         if needed > left:
             return {"id": branch_id, "label": label, "available": False, "path": None,
-                    "reason": f"Il reste {_years(left)} avant {end_age} ans : il en faut {needed} pour finir le master."}
+                    "reason": say(f"{_years(left)} left before age {end_age}: {needed} are needed to finish the master's.",
+                                  f"Il reste {_years(left)} avant {end_age} ans : il en faut {needed} pour finir le master.")}
         return {"id": branch_id, "label": label, "available": True, "reason": None, "path": then((block, needed))}
 
     def other(branch_id: str, label: str, *blocks: tuple[str, int]) -> dict:
         return {"id": branch_id, "label": label, "available": True, "reason": None, "path": then(*blocks)}
 
     if last in STUDIES and progress < 1:
-        out = [study("continuer", "Continuer le master", last),
-               other("emploi", "Arrêter pour un emploi à Lausanne")]
+        out = [study("continuer", say("Continue the master's", "Continuer le master"), last),
+               other("emploi", say("Stop for a job in Lausanne", "Arrêter pour un emploi à Lausanne"))]
         if last == "master":
-            out.append(study("master_en_travaillant", "Passer en master en travaillant", "master_part_time"))
+            out.append(study("master_en_travaillant", say("Switch to the master's while working", "Passer en master en travaillant"),
+                             "master_part_time"))
     elif last == "job_abroad":
-        out = [other("berlin", "Rester à Berlin", ("job_abroad", left)),
-               other("emploi", "Rentrer pour un emploi à Lausanne"),
-               study("master", "Reprendre le master à Lausanne" if progress else "Commencer un master à Lausanne", "master")]
+        out = [other("berlin", say("Stay in Berlin", "Rester à Berlin"), ("job_abroad", left)),
+               other("emploi", say("Come back for a job in Lausanne", "Rentrer pour un emploi à Lausanne")),
+               study("master", say("Resume the master's in Lausanne", "Reprendre le master à Lausanne") if progress
+                     else say("Start a master's in Lausanne", "Commencer un master à Lausanne"), "master")]
     elif last is None:
-        out = [study("master", "Faire un master", "master"),
-               other("emploi", "Travailler à Lausanne"),
-               other("berlin", "Partir à Berlin", ("job_abroad", left))]
+        out = [study("master", say("Do a master's", "Faire un master"), "master"),
+               other("emploi", say("Work in Lausanne", "Travailler à Lausanne")),
+               other("berlin", say("Move to Berlin", "Partir à Berlin"), ("job_abroad", left))]
     else:
-        out = [other("emploi", "Rester en emploi à Lausanne" if last == "job" else "Prendre un emploi à Lausanne"),
-               study("master", "Reprendre le master" if progress else "Commencer un master", "master"),
-               other("berlin", "Partir à Berlin", ("job_abroad", left))]
+        out = [other("emploi", say("Stay employed in Lausanne", "Rester en emploi à Lausanne") if last == "job"
+                     else say("Take a job in Lausanne", "Prendre un emploi à Lausanne")),
+               study("master", say("Resume the master's", "Reprendre le master") if progress
+                     else say("Start a master's", "Commencer un master"), "master"),
+               other("berlin", say("Move to Berlin", "Partir à Berlin"), ("job_abroad", left))]
 
     # Le trajet suivi : c'est la branche qui commence par le même bloc que lui après la gare. Elle garde le trajet
     # tel qu'il est, même s'il change encore plus tard. S'il n'est dans aucune branche, il s'ajoute en tête.
@@ -237,6 +260,6 @@ def destinations(path: list[dict], gare_month: int, horizon_months: int, age0: i
         if mine:
             mine["on_path"], mine["path"] = True, path
         else:
-            out.insert(0, {"id": "trajet", "label": "Suivre le trajet actuel", "available": True, "reason": None,
+            out.insert(0, {"id": "trajet", "label": say("Follow the current route", "Suivre le trajet actuel"), "available": True, "reason": None,
                            "path": path, "on_path": True})
     return out

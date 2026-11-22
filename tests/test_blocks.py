@@ -1,6 +1,10 @@
 """Des blocs de vie aux opérations du moteur, et les branches proposées à chaque gare (engine/blocks.py)."""
 from __future__ import annotations
 
+from engine import i18n
+
+i18n.set_default("fr")      # ces tests attendent les phrases du moteur en français ; l'anglais est testé dans tests/test_english.py
+
 import unittest
 from pathlib import Path
 

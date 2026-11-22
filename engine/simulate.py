@@ -11,6 +11,7 @@ import re
 from dataclasses import replace
 from pathlib import Path
 
+from engine.i18n import say
 from engine.assumptions import defaults
 from engine.contract import (ASSET_ACCOUNTS, Line, MonthRecord, Operation, Profile, Scenario,
                              SimulationResult, State, Station, World)
@@ -28,12 +29,13 @@ def resolve(value, th: dict[str, float]):
     total = 0.0
     for term in value.split("+"):
         if not _TERM.match(term):
-            raise ValueError(f"Expression invalide : « {value} »")
+            raise ValueError(say(f"Invalid expression: “{value}”", f"Expression invalide : « {value} »"))
         term = term.strip()
         if term.startswith("$"):
             key = term[1:]
             if key not in th:
-                raise ValueError(f"Hypothèse manquante : « {key} » (utilisée dans « {value} »)")
+                raise ValueError(say(f"Missing assumption: “{key}” (used in “{value}”)",
+                                     f"Hypothèse manquante : « {key} » (utilisée dans « {value} »)"))
             total += th[key]
         else:
             total += float(term)
@@ -108,7 +110,8 @@ def run_from(profile: Profile, x: State, ops: tuple[Operation, ...], until: int,
     Les opérations et le monde sont indexés en mois absolus, comptés depuis le départ.
     """
     if len(worlds) < until:
-        raise ValueError(f"Le monde couvre {len(worlds)} mois, il en faut {until}.")
+        raise ValueError(say(f"The world covers {len(worlds)} months, {until} are needed.",
+                             f"Le monde couvre {len(worlds)} mois, il en faut {until}."))
     months: list[MonthRecord] = []
     states: dict[int, State] = {x.month: x} if x.month in snapshots else {}
     for t in range(x.month, until):
@@ -156,7 +159,8 @@ def resume(profile: Profile, past: list[MonthRecord], x: State, ops: tuple[Opera
     """La vie entière d'un trajet qui bifurque : les mois déjà vécus jusqu'à la gare, puis la suite depuis l'état x."""
     validate(ops)
     if len(past) != x.month:
-        raise ValueError(f"Le passé compte {len(past)} mois, l'état reprend au mois {x.month}.")
+        raise ValueError(say(f"The past holds {len(past)} months, the state resumes at month {x.month}.",
+                             f"Le passé compte {len(past)} mois, l'état reprend au mois {x.month}."))
     worlds = worlds or reference_world(th, horizon)
     _, months, _ = run_from(profile, x, ops, horizon, th, worlds)
     return summarize(past + months, line_id, world_id)
@@ -171,7 +175,8 @@ def run(scenario: Scenario, line_id: str, overrides: dict[str, float] | None = N
         worlds: list[World] | None = None, world_id: str = "reference") -> SimulationResult:
     line = next((l for l in scenario.lines if l.id == line_id), None)
     if line is None:
-        raise ValueError(f"Ligne inconnue « {line_id} ». Lignes : {[l.id for l in scenario.lines]}")
+        raise ValueError(say(f"Unknown line “{line_id}”. Lines: {[l.id for l in scenario.lines]}",
+                             f"Ligne inconnue « {line_id} ». Lignes : {[l.id for l in scenario.lines]}"))
     th = theta_for(scenario, overrides)
     return run_ops(scenario.profile, materialize(line, th), scenario.horizon_months, th,
                    worlds, line_id, world_id)

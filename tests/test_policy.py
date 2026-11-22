@@ -5,6 +5,10 @@ appelé directement ; le seuil est recalculé, jamais écrit ; la référence cl
 """
 from __future__ import annotations
 
+from engine import i18n
+
+i18n.set_default("fr")      # ces tests attendent les phrases du moteur en français ; l'anglais est testé dans tests/test_english.py
+
 import json
 import unittest
 from dataclasses import replace

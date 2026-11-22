@@ -1,8 +1,8 @@
 // Mise en forme des nombres et des dates. Aucun calcul financier : on écrit ce que l'API renvoie.
-import { T } from './texts.fr.js';
+import { T } from './i18n.js';
 
 const grouped = (n) => String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, "'");
-const decimal = (n, digits) => Number(n.toFixed(digits)).toString().replace('.', ',');
+const decimal = (n, digits) => Number(n.toFixed(digits)).toString().replace('.', T.decimalMark);
 
 /** Montant au format suisse : 8'000 CHF. */
 export function chf(value) {
@@ -12,7 +12,7 @@ export function chf(value) {
 /** Un nombre écrit à la suisse, sans unité : 12'800 ou 0,5. */
 export function plain(value) {
   const [whole, rest] = Math.abs(value).toFixed(2).split('.');
-  return `${value < 0 ? '−' : ''}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, "'")}${rest === '00' ? '' : `,${rest.replace(/0$/, '')}`}`;
+  return `${value < 0 ? '−' : ''}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, "'")}${rest === '00' ? '' : `${T.decimalMark}${rest.replace(/0$/, '')}`}`;
 }
 
 /** Un mois du trajet, écrit comme un âge : le mois 6 d'une personne de 20 ans est « 20 ans et 6 mois ». */
@@ -39,6 +39,6 @@ export function ranges(months) {
 /** La valeur d'un paramètre de monde, écrite avec son unité : −30 %, 1,06, oui. */
 export function worldValue(field, value) {
   if (typeof value === 'boolean') return value ? T.traffic.yes : '';
-  if (field.endsWith('_monthly')) return `${value < 0 ? '−' : '+'}${decimal(Math.abs(value) * 100, 1)} %`;
+  if (field.endsWith('_monthly')) return T.percent(`${value < 0 ? '−' : '+'}${decimal(Math.abs(value) * 100, 1)}`);
   return decimal(value, 2);
 }

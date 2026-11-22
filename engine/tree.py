@@ -14,15 +14,26 @@ import json
 import math
 from dataclasses import asdict, dataclass, replace
 
+from engine import english, i18n
 from engine import worlds as W
 from engine.assumptions import by_key
 from engine.blocks import blocks_to_ops, destinations, legs_of, normalize
 from engine.contract import Category, Flow, Scenario, SimulationResult, State
-from engine.explore import DOORS, door_age, doors_of, margins_of, rule_text
+from engine.explore import DOORS, door_age, door_name, doors_of, margins_of, rule_text
+from engine.i18n import say
 from engine.simulate import (cash_chf, debt_chf, initial_state, net_worth_chf, resume, run_from, run_with_states, summarize,
                              theta_for)
 
-HORIZON_TEXT = "en changeant de route au plus une fois"
+
+
+def horizon_text() -> str:
+    """Jusqu'où la flexibilité regarde : une des branches d'ici, ou le trajet avec un seul changement plus tard."""
+    return say("changing route at most once", "en changeant de route au plus une fois")
+
+
+def variable_label(variable: str) -> str:
+    """Le nom d'une grandeur lue par une règle, dans la langue courante."""
+    return say("set aside (cash + investments − debts)", VARIABLES[variable][0])
 TIP_RANGE = (-100_000, 1_000_000)      # où chercher un point de bascule en épargne, en CHF
 
 
@@ -231,9 +242,11 @@ class Tree:
         try:
             gare, value = int(observation["gare_month"]), float(observation["value_chf"])
         except (KeyError, TypeError, ValueError) as error:
-            raise ValueError("Une épargne constatée se décrit par une gare (gare_month) et un montant (value_chf).") from error
+            raise ValueError(say("Observed savings are described by a junction (gare_month) and an amount (value_chf).",
+                                 "Une épargne constatée se décrit par une gare (gare_month) et un montant (value_chf).")) from error
         if not path or gare not in self.gares or not math.isfinite(value):
-            raise ValueError(f"Une épargne constatée se donne à une gare du trajet, après le départ. Gares : {list(self.gares)}")
+            raise ValueError(say(f"Observed savings are given at a junction of the route, after the departure. Junctions: {list(self.gares)}",
+                                 f"Une épargne constatée se donne à une gare du trajet, après le départ. Gares : {list(self.gares)}"))
         return gare, value
 
     def lived(self, path: list[dict], world_id: str, overrides: dict | None,
@@ -323,11 +336,11 @@ class Tree:
         for door in DOORS:
             age = door_age(door, th, self.age0, self.h)
             origin = assumptions.get(door.source_key) if door.source_key else None
-            out.append({"key": door.key, "name": door.name, "rule": rule_text(door, th),
+            out.append({"key": door.key, "name": door_name(door), "rule": rule_text(door, th),
                         "age": None if age is None else self.age(round((age - self.age0) * 12)),
                         "month": None if age is None else round((age - self.age0) * 12), "whole_trip": age is None,
                         "kind": origin.kind if origin else "regle",
-                        "source": origin.source if origin else "Règle du moteur (engine/explore.py)"})
+                        "source": origin.source if origin else say(english.DOOR_ORIGIN, "Règle du moteur (engine/explore.py)")})
         return out
 
     @staticmethod
@@ -348,7 +361,7 @@ class Tree:
                 "bands": self.bands({w: self.lived(path, w, overrides, obs)[0] for w in tested},
                                     self.lived(path, "reference", overrides, obs)[0], self.lived(path, "prudent", overrides, obs)[0], th),
                 "observation": self._observation(path, obs, overrides, mondes, tested),
-                "months": asdict(shown)["months"]}
+                "months": i18n.months(asdict(shown)["months"])}
 
     # ------------------------------------------------------------------ /node
     def _branches(self, path: list[dict], gare_month: int, overrides: dict | None, tested: tuple[str, ...],
@@ -417,7 +430,7 @@ class Tree:
         return {"gare_month": gare_month, "age": self.age(gare_month), "worlds": list(tested), "state_by_world": state,
                 "observation": self._observation(path, obs, overrides, mondes, tested),
                 "branches": branches,
-                "flexibility": {"horizon": HORIZON_TEXT, "doors_total": len(DOORS),
+                "flexibility": {"horizon": horizon_text(), "doors_total": len(DOORS),
                                 "robust": [k for k, d in by_door.items() if d["robust"]],
                                 "possible": [k for k, d in by_door.items() if d["possible"] and not d["robust"]],
                                 "by_door": by_door},
@@ -438,11 +451,19 @@ class Tree:
                 if sign and sign["gare_month"] == gare_month and row["key"] not in done:
                     done.add(row["key"])
                     below = observed_chf < sign["threshold_chf"]
-                    side = (f"sous le seuil de {_chf(sign['threshold_chf'])} : c'est le côté où ce trajet ne tient plus « {doors[row['key']]} »"
-                            if below else
-                            f"au-dessus du seuil de {_chf(sign['threshold_chf'])} : c'est le côté où ce trajet tient « {doors[row['key']]} »")
+                    limit, name, age = _chf(sign["threshold_chf"]), doors[row["key"]], self.age(gare_month)
+                    if below:
+                        text = say(f"With {_chf(observed_chf)} set aside at {age}, you are below the threshold of {limit}: "
+                                   f"that is the side where this route no longer holds “{name}”.",
+                                   f"Avec {_chf(observed_chf)} de côté à {age} ans, tu es sous le seuil de {limit} : "
+                                   f"c'est le côté où ce trajet ne tient plus « {name} ».")
+                    else:
+                        text = say(f"With {_chf(observed_chf)} set aside at {age}, you are above the threshold of {limit}: "
+                                   f"that is the side where this route holds “{name}”.",
+                                   f"Avec {_chf(observed_chf)} de côté à {age} ans, tu es au-dessus du seuil de {limit} : "
+                                   f"c'est le côté où ce trajet tient « {name} ».")
                     signals.append({"door": row["key"], "threshold_chf": sign["threshold_chf"], "side": "sous" if below else "au_dessus",
-                                    "text": f"Avec {_chf(observed_chf)} de côté à {self.age(gare_month)} ans, tu es {side}."})
+                                    "text": text})
         return {"gare_month": gare_month, "age": self.age(gare_month), "value_chf": observed_chf, "signals": signals,
                 "simulated_chf": {w: round(read(self.trip(path, w, overrides)[1][gare_month]), 2) for w in tested}}
 
@@ -513,11 +534,16 @@ class Tree:
             if not max(lost) < threshold <= min(held):
                 return None
         if threshold >= 0:
-            when = f"Si tu as moins de {_chf(threshold)} de côté (cash + placements − dettes) à {self.age(g)} ans"
+            text = say(f"If you have less than {_chf(threshold)} set aside (cash + investments − debts) at {self.age(g)}, "
+                       f"this route no longer holds “{door['name']}”.",
+                       f"Si tu as moins de {_chf(threshold)} de côté (cash + placements − dettes) à {self.age(g)} ans, "
+                       f"ce trajet ne tient plus « {door['name']} ».")
         else:
-            when = f"Si tes dettes dépassent ton cash et tes placements de plus de {_chf(-threshold)} à {self.age(g)} ans"
-        return {"variable": "liquidite_chf", "threshold_chf": threshold, "direction": "sous", "gare_month": g,
-                "text": f"{when}, ce trajet ne tient plus « {door['name']} »."}
+            text = say(f"If your debts exceed your cash and investments by more than {_chf(-threshold)} at {self.age(g)}, "
+                       f"this route no longer holds “{door['name']}”.",
+                       f"Si tes dettes dépassent ton cash et tes placements de plus de {_chf(-threshold)} à {self.age(g)} ans, "
+                       f"ce trajet ne tient plus « {door['name']} ».")
+        return {"variable": "liquidite_chf", "threshold_chf": threshold, "direction": "sous", "gare_month": g, "text": text}
 
     # ------------------------------------------------------------------ /adaptive
     def default_rule(self, path: list[dict], overrides: dict | None = None, mondes=None) -> tuple[Rule, str] | None:
@@ -538,26 +564,34 @@ class Tree:
         if rule is None:
             found = self.default_rule(path, overrides, mondes)
             if found is None:
-                raise ValueError("Ce trajet n'a pas de signal à surveiller : il n'y a pas de règle par défaut. Donne une règle "
-                                 "(gare_month, variable, threshold_chf, branch_id).")
+                raise ValueError(say("This route has no signpost: there is no default rule. Give a rule "
+                                     "(gare_month, variable, threshold_chf, branch_id).",
+                                     "Ce trajet n'a pas de signal à surveiller : il n'y a pas de règle par défaut. Donne une règle "
+                                     "(gare_month, variable, threshold_chf, branch_id)."))
             the_rule, door = found[0], door or found[1]
         else:
             try:
                 the_rule = Rule(int(rule["gare_month"]), str(rule["variable"]), float(rule["threshold_chf"]), str(rule["branch_id"]))
             except (KeyError, TypeError, ValueError) as error:
-                raise ValueError("Une règle se décrit par une gare (gare_month), une grandeur (variable), un seuil (threshold_chf) "
-                                 "et une branche (branch_id).") from error
+                raise ValueError(say("A rule is described by a junction (gare_month), a quantity (variable), a threshold (threshold_chf) "
+                                     "and a branch (branch_id).",
+                                     "Une règle se décrit par une gare (gare_month), une grandeur (variable), un seuil (threshold_chf) "
+                                     "et une branche (branch_id).")) from error
         if the_rule.variable not in VARIABLES:
-            raise ValueError(f"Grandeur inconnue « {the_rule.variable} ». Grandeurs : {sorted(VARIABLES)}")
+            raise ValueError(say(f"Unknown quantity “{the_rule.variable}”. Quantities: {sorted(VARIABLES)}",
+                                 f"Grandeur inconnue « {the_rule.variable} ». Grandeurs : {sorted(VARIABLES)}"))
         if the_rule.gare_month not in self.gares:
-            raise ValueError(f"Pas de gare au mois {the_rule.gare_month}. Gares : {list(self.gares)}")
+            raise ValueError(say(f"No junction at month {the_rule.gare_month}. Junctions: {list(self.gares)}",
+                                 f"Pas de gare au mois {the_rule.gare_month}. Gares : {list(self.gares)}"))
         if door is not None and door not in {d.key for d in DOORS}:
-            raise ValueError(f"Porte inconnue « {door} ». Portes : {[d.key for d in DOORS]}")
+            raise ValueError(say(f"Unknown station “{door}”. Stations: {[d.key for d in DOORS]}",
+                                 f"Porte inconnue « {door} ». Portes : {[d.key for d in DOORS]}"))
         choices = destinations(path, the_rule.gare_month, self.h, self.age0)
         branch = next((b for b in choices if b["id"] == the_rule.branch_id and b["available"] and not b["on_path"]), None)
         if branch is None:
-            raise ValueError(f"À cette gare, la branche « {the_rule.branch_id} » n'existe pas ou n'est pas ouverte. "
-                             f"Branches : {[b['id'] for b in choices if b['available'] and not b['on_path']]}")
+            open_ids = [b["id"] for b in choices if b["available"] and not b["on_path"]]
+            raise ValueError(say(f"At this junction, the branch “{the_rule.branch_id}” does not exist or is not open. Branches: {open_ids}",
+                                 f"À cette gare, la branche « {the_rule.branch_id} » n'existe pas ou n'est pas ouverte. Branches : {open_ids}"))
         read = VARIABLES[the_rule.variable][1]
         # Le jumeau qui apprend : les deux plans suivent le trajet vécu, et la règle lit l'épargne constatée.
         # Une épargne constatée après la gare de la règle arrive trop tard pour elle : la règle garde l'état simulé.
@@ -585,11 +619,12 @@ class Tree:
         kept = {d.key: {"fixed": sum(by_world[w]["fixed"]["doors"][d.key] == "ouverte" for w in tested),
                         "adaptive": sum(by_world[w]["adaptive"]["doors"][d.key] == "ouverte" for w in tested)} for d in DOORS}
         age = self.age(the_rule.gare_month)
-        label = VARIABLES[the_rule.variable][0]
+        label, taken = variable_label(the_rule.variable), branch["label"][0].lower() + branch["label"][1:]
         return {"path": path,
                 "rule": {"gare_month": the_rule.gare_month, "age": age, "variable": the_rule.variable, "variable_label": label,
                          "threshold_chf": the_rule.threshold_chf, "branch_id": branch["id"], "branch_label": branch["label"],
-                         "text": f"À {age} ans, si tu as moins de {_chf(the_rule.threshold_chf)} {label} : {branch['label'][0].lower() + branch['label'][1:]}."},
+                         "text": say(f"At {age}, if you have less than {_chf(the_rule.threshold_chf)} {label}: {taken}.",
+                                     f"À {age} ans, si tu as moins de {_chf(the_rule.threshold_chf)} {label} : {taken}.")},
                 "target_door": door, "worlds": list(tested), "by_world": by_world,
                 "observation": None if obs is None else {"gare_month": obs[0], "age": self.age(obs[0]), "value_chf": obs[1]},
                 "summary": {"worlds": len(tested), "doors_kept": kept,

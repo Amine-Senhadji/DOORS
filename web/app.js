@@ -1,6 +1,6 @@
 // Démarrage et enchaînement : le profil, les mondes, le trajet en cours, la carte, les fiches.
 // Aucun chiffre n'est calculé ici : tout vient de web/api.js.
-import { T } from './texts.fr.js';
+import { T, lang, otherLanguageUrl } from './i18n.js';
 import { ageAtMonth, chf, worldValue } from './format.js';
 import { fetchAdaptive, fetchAssumptions, fetchChecks, fetchFolkRule, fetchLimits, fetchNode, fetchPath, fetchPathways, fetchPolicies, fetchScenario, fetchWorlds,
          runStarterKit, setAssumptions, setObservation, setWorlds } from './api.js';
@@ -61,6 +61,10 @@ function renderHeader() {
   $('plan').addEventListener('click', openPlan);
   $('policies').textContent = T.policies.button;
   $('policies').addEventListener('click', () => openPolicies());
+  document.documentElement.lang = lang;
+  $('language').textContent = T.language.switchTo;
+  $('language').href = otherLanguageUrl();
+  $('language').setAttribute('aria-label', `${T.language.label} : ${T.language.switchTo}`);
   $('drawer-open').textContent = T.drawer.open;
   $('drawer-open').addEventListener('click', () => openDrawer(state.drawer?.section));
 }

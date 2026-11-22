@@ -1,7 +1,7 @@
 // Les fiches : le trajet en cours, une station, une gare de correspondance.
 // Chaque fiche tient en quelques lignes ; le reste est rangé sous « Détails ».
 // Chaque chiffre vient de l'API ; les phrases sont dans texts.fr.js.
-import { T } from './texts.fr.js';
+import { T } from './i18n.js';
 import { ageAtMonth, chf, plain, ranges } from './format.js';
 import { lightOf, stateOf, symbol } from './map.js';
 
@@ -131,7 +131,7 @@ export function renderGareCard(card, { node, trip, pathways, worlds, world, prof
   const names = Object.fromEntries(trip.doors.map((door) => [door.key, door.name]));
   const flex = node.flexibility;
   const lost = Object.keys(flex.by_door).filter((key) => !flex.by_door[key].possible);
-  const named = (keys) => keys.map((key) => `« ${names[key] ?? key} »`);
+  const named = (keys) => keys.map((key) => T.quoted(names[key] ?? key));
   const here = node.state_by_world[world.id];
   card.style.removeProperty('--c');
 
@@ -218,7 +218,7 @@ export function renderGareCard(card, { node, trip, pathways, worlds, world, prof
  */
 export function renderPlanCard(card, { plan, trip, worlds, world, onBack }) {
   const names = Object.fromEntries(trip.doors.map((door) => [door.key, door.name]));
-  const named = (keys) => keys.map((key) => `« ${names[key] ?? key} »`);
+  const named = (keys) => keys.map((key) => T.quoted(names[key] ?? key));
   const here = plan.by_world[world.id];
   const tested = worlds.filter((w) => plan.by_world[w.id]);
   card.style.removeProperty('--c');

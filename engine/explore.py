@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
+from engine import english
+from engine.i18n import percent, say
 from engine.assumptions import by_key
 from engine.contract import Category, Scenario, SimulationResult, Station, World
 from engine.simulate import run, theta_for
@@ -40,7 +42,7 @@ class _Fr(float):
         if spec == "chf":
             return f"{self:,.0f}".replace(",", "'") + " CHF"
         if spec == "pct":
-            return f"{self * 100:.0f} %"
+            return percent(float(self))
         if spec == "n":
             return f"{self:.0f}"
         return float.__format__(self, spec)
@@ -48,7 +50,13 @@ class _Fr(float):
 
 def rule_text(door: Door, th: dict) -> str:
     """La règle d'une porte, écrite avec les hypothèses en cours."""
-    return door.rule.format(**{k: _Fr(v) for k, v in th.items()})
+    rule = say(english.DOORS[door.key][1], door.rule)
+    return rule.format(**{k: _Fr(v) for k, v in th.items()})
+
+
+def door_name(door: Door) -> str:
+    """Le nom d'une porte, dans la langue courante."""
+    return say(english.DOORS[door.key][0], door.name)
 
 
 def door_age(door: Door, th: dict, age0: int, horizon_months: int) -> float | None:
@@ -159,7 +167,8 @@ def margins_of(r: SimulationResult, th: dict, age0: int) -> dict[str, tuple[floa
 def _station(sc: Scenario, station_id: str) -> Station:
     st = next((s for s in sc.stations if s.id == station_id), None)
     if st is None:
-        raise ValueError(f"Station inconnue « {station_id} ». Stations : {[s.id for s in sc.stations]}")
+        raise ValueError(say(f"Unknown station “{station_id}”. Stations: {[s.id for s in sc.stations]}",
+                             f"Station inconnue « {station_id} ». Stations : {[s.id for s in sc.stations]}"))
     return st
 
 
@@ -193,13 +202,13 @@ def compare(sc: Scenario, station_id: str, overrides: dict | None = None,
         if same:
             shared = {"until_month": st.month, "cash_chf": round(a.months[st.month - 1].closing_cash_chf, 2),
                       "net_worth_chf": round(a.months[st.month - 1].net_worth_chf, 2),
-                      "note": "Identique des deux côtés : n'entre pas dans la comparaison."}
+                      "note": say("Identical on both sides: left out of the comparison.", "Identique des deux côtés : n'entre pas dans la comparaison.")}
     da, db = doors_of(a, th, sc.profile.age), doors_of(b, th, sc.profile.age)
     state = lambda ok: "ouverte" if ok else "fermee"
     return {
         "station_id": st.id, "question": st.question, "world_id": world_id,
         "a": _summary(sc, a), "b": _summary(sc, b), "shared_past": shared,
-        "doors": [{"key": d.key, "name": d.name, "rule": rule_text(d, th), "a": state(da[d.key]), "b": state(db[d.key])}
+        "doors": [{"key": d.key, "name": door_name(d), "rule": rule_text(d, th), "a": state(da[d.key]), "b": state(db[d.key])}
                   for d in DOORS],
         "a_catches_up_month": catches_up_month(a, b),
     }
@@ -213,7 +222,8 @@ def _cell(sc: Scenario, st: Station, criterion: str, values: dict, worlds) -> di
         winner = "a" if a.net_worth_end_chf > b.net_worth_end_chf else "b"
     else:
         if criterion not in DOOR_KEYS:
-            raise ValueError(f"Critère inconnu « {criterion} ». Critères : patrimoine, {', '.join(DOOR_KEYS)}")
+            raise ValueError(say(f"Unknown criterion “{criterion}”. Criteria: patrimoine, {', '.join(DOOR_KEYS)}",
+                                 f"Critère inconnu « {criterion} ». Critères : patrimoine, {', '.join(DOOR_KEYS)}"))
         th = theta_for(sc, values)
         oa = DOOR_KEYS[criterion].test(a, th, sc.profile.age)
         ob = DOOR_KEYS[criterion].test(b, th, sc.profile.age)
@@ -275,15 +285,18 @@ def frontier(sc: Scenario, station_id: str, x: dict, y: dict, criterion: str = "
     tippings.sort(key=lambda t: t["distance"])
 
     labels = {"a": _name(sc, st.options[0]), "b": _name(sc, st.options[1]),
-              "les_deux": "Les deux lignes", "aucune": "Aucune ligne"}
+              "les_deux": say("Both lines", "Les deux lignes"), "aucune": say("Neither line", "Aucune ligne")}
     rules = []
     for t in tippings:
         label = by_key()[t["key"]].label.lower() if t["key"] in by_key() else t["key"]
-        verb = "dépasse" if t["direction"] == "au-dessus" else "descend sous"
-        rules.append(f"Si {label} {verb} environ {_fmt(t['key'], t['value'])}, "
-                     f"{labels[t['winner_beyond']].lower()} l'emporte (autres hypothèses inchangées).")
+        above = t["direction"] == "au-dessus"
+        rules.append(say(f"If {label} {'goes above' if above else 'falls below'} about {_fmt(t['key'], t['value'])}, "
+                         f"{labels[t['winner_beyond']].lower()} comes out ahead (other assumptions unchanged).",
+                         f"Si {label} {'dépasse' if above else 'descend sous'} environ {_fmt(t['key'], t['value'])}, "
+                         f"{labels[t['winner_beyond']].lower()} l'emporte (autres hypothèses inchangées)."))
     if not tippings:
-        rules.append(f"{labels[toi['winner']]} l'emporte sur toute la carte avec ces hypothèses.")
+        rules.append(say(f"{labels[toi['winner']]} comes out ahead across the whole map with these assumptions.",
+                         f"{labels[toi['winner']]} l'emporte sur toute la carte avec ces hypothèses."))
     return {"station_id": st.id, "criterion": criterion, "x_key": x["key"], "y_key": y["key"],
             "x_values": xs, "y_values": ys, "cells": cells, "toi": toi,
             "nearest_tipping": ({k: v for k, v in tippings[0].items() if k != "distance"} if tippings else None),

@@ -25,10 +25,12 @@ import random
 from dataclasses import dataclass, replace
 from fractions import Fraction
 
+from engine import i18n
 from engine import worlds as W
 from engine.blocks import MASTER_YEARS, PART_TIME_YEARS, destinations, normalize
 from engine.explore import doors_of, margins_of
-from engine.tree import VARIABLES, Tree, _chf
+from engine.i18n import say
+from engine.tree import VARIABLES, Tree, _chf, variable_label
 
 
 @dataclass(frozen=True)
@@ -45,12 +47,18 @@ POLICIES: tuple[Policy, ...] = (
     Policy("equilibre", "Équilibre", 72, "emploi"),
     Policy("ambition", "Ambition", 72, "master_en_travaillant"),
 )
+NAMES_EN = {"securite": "Safety", "equilibre": "Balance", "ambition": "Ambition"}
 FIXED = "fige"                               # le plan figé : le trajet suivi sans rien changer
 TARGET = "reconversion"                      # l'objectif visé : celui d'Alexia dans Data/synthetic-goals.csv
 TABLE_WORLDS = ("reference", "krach@24", "chomage_6_mois@24", "chomage_long")
 HIGHLIGHT = "chomage_long"                   # la colonne mise en avant : le choc long
 VARIABLE = "liquidite_chf"
 SEED, DRAWS, DRAW_GRAVITY = 2026, 200, (50, 150)
+
+
+def policy_name(policy: Policy) -> str:
+    """Le nom d'une politique, dans la langue courante."""
+    return say(NAMES_EN[policy.id], policy.name)
 
 
 def master_fate(path: list[dict], age0: int) -> dict:
@@ -84,12 +92,15 @@ class Analysis:
 
     def _branch(self, policy: Policy) -> dict:
         if policy.gare_month not in self.t.gares:
-            raise ValueError(f"Pas de gare au mois {policy.gare_month}. Gares : {list(self.t.gares)}")
+            raise ValueError(say(f"No junction at month {policy.gare_month}. Junctions: {list(self.t.gares)}",
+                                 f"Pas de gare au mois {policy.gare_month}. Gares : {list(self.t.gares)}"))
         choices = destinations(self.path, policy.gare_month, self.t.h, self.t.age0)
         found = next((b for b in choices if b["id"] == policy.branch_id and b["available"] and not b["on_path"]), None)
         if found is None:
-            raise ValueError(f"La politique « {policy.name} » prend la branche « {policy.branch_id} » à "
-                             f"{self.t.age(policy.gare_month)} ans : ce trajet ne la propose pas à cette gare.")
+            raise ValueError(say(f"The “{policy_name(policy)}” policy takes the branch “{policy.branch_id}” at "
+                                 f"{self.t.age(policy.gare_month)}: this route does not offer it at that junction.",
+                                 f"La politique « {policy.name} » prend la branche « {policy.branch_id} » à "
+                                 f"{self.t.age(policy.gare_month)} ans : ce trajet ne la propose pas à cette gare."))
         return found
 
     # ------------------------------------------------------------------ un trajet dans un monde
@@ -190,9 +201,13 @@ class Analysis:
                 "regret_chf": self.regret(run, world_id), "path": path}
 
     def rule(self, policy: Policy, threshold: float | None) -> dict:
-        age, label, branch = self.t.age(policy.gare_month), VARIABLES[VARIABLE][0], self.branch[policy.id]
-        text = (f"À {age} ans, si tu as moins de {_chf(threshold)} {label} : {branch['label'][0].lower() + branch['label'][1:]}."
-                if threshold is not None else f"À {age} ans : aucun seuil ne sert l'objectif dans les mondes testés.")
+        age, label, branch = self.t.age(policy.gare_month), variable_label(VARIABLE), self.branch[policy.id]
+        taken = branch["label"][0].lower() + branch["label"][1:]
+        text = (say(f"At {age}, if you have less than {_chf(threshold)} {label}: {taken}.",
+                    f"À {age} ans, si tu as moins de {_chf(threshold)} {label} : {taken}.")
+                if threshold is not None else
+                say(f"At {age}: no threshold serves the goal in the tested worlds.",
+                    f"À {age} ans : aucun seuil ne sert l'objectif dans les mondes testés."))
         return {"gare_month": policy.gare_month, "age": age, "variable": VARIABLE, "variable_label": label,
                 "threshold_chf": threshold, "branch_id": policy.branch_id, "branch_label": branch["label"], "text": text}
 
@@ -265,7 +280,7 @@ def _case(a: Analysis, thresholds: dict[str, float | None], worlds: tuple[str, .
         cell = a.cell(None, None, w) if option == FIXED else a.cell(next(p for p in POLICIES if p.id == option), math.inf, w)
         seer[w] = {**{k: cell[k] for k in ("doors_open", "doors_total", "peak_financing_chf", "master", "target_holds",
                                            "target_value_chf", "target_required_chf")},
-                   "option": option, "label": "Rester sur le plan" if option == FIXED else a.branch[option]["label"]}
+                   "option": option, "label": say("Stay on the plan", "Rester sur le plan") if option == FIXED else a.branch[option]["label"]}
     # L'écart entre la politique et le plan figé, monde par monde : ce que lire son état, puis décider, change pour cette Alexia.
     gap = {}
     for p in POLICIES:
@@ -294,7 +309,7 @@ def view(tree: Tree, path: list[dict], overrides: dict | None = None, mondes=Non
     Deux fois : pour Alexia, et pour Alexia fragile. La politique est la même, avec les mêmes seuils : seul l'état change."""
     th = tree.theta(overrides)
     worlds = W.asked(mondes if mondes is not None else TABLE_WORLDS, th, tree.h, tree.age0)
-    key = (json.dumps(path, sort_keys=True), json.dumps(overrides or {}, sort_keys=True), worlds)
+    key = (json.dumps(path, sort_keys=True), json.dumps(overrides or {}, sort_keys=True), worlds, i18n.current())
     cache = tree.__dict__.setdefault("_policy_views", {})
     if key in cache:
         return cache[key]
@@ -302,8 +317,8 @@ def view(tree: Tree, path: list[dict], overrides: dict | None = None, mondes=Non
     found = {p.id: a.calibrate(p, worlds) for p in POLICIES}
     thresholds = {p.id: found[p.id]["threshold_chf"] for p in POLICIES}
     checks = validate(tree, a.path, overrides, worlds, thresholds)
-    rows = [{"id": FIXED, "name": "Plan figé", "rule": None, "calibration": None, "leave_one_out": None}]
-    rows += [{"id": p.id, "name": p.name, "rule": a.rule(p, thresholds[p.id]), "calibration": found[p.id],
+    rows = [{"id": FIXED, "name": say("Fixed plan", "Plan figé"), "rule": None, "calibration": None, "leave_one_out": None}]
+    rows += [{"id": p.id, "name": policy_name(p), "rule": a.rule(p, thresholds[p.id]), "calibration": found[p.id],
               "leave_one_out": checks["leave_one_out"][p.id]} for p in POLICIES]
     base = _case(a, thresholds, worlds)
     door = next(d for d in tree.doors(th) if d["key"] == a.target)

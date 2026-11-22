@@ -11,7 +11,10 @@ Ordre de priorité : les données d'Alexia d'abord (Data/), le starter-kit du d�
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 from engine.contract import Assumption
+from engine.i18n import current
 
 A = Assumption
 SOURCE_PROFIL = "Data/synthetic-profiles.csv (P00001)"
@@ -149,5 +152,13 @@ def defaults() -> dict[str, float]:
     return {a.key: float(a.value) for a in ASSUMPTIONS}
 
 
+def localized() -> tuple[Assumption, ...]:
+    """Les hypothèses avec leur libellé, leur unité et leur source dans la langue courante. Les valeurs sont les mêmes."""
+    if current() == "fr":
+        return ASSUMPTIONS
+    from engine.english import ASSUMPTIONS as english, UNITS
+    return tuple(replace(a, label=english[a.key][0], unit=UNITS.get(a.unit, a.unit), source=english[a.key][1]) for a in ASSUMPTIONS)
+
+
 def by_key() -> dict[str, Assumption]:
-    return {a.key: a for a in ASSUMPTIONS}
+    return {a.key: a for a in localized()}

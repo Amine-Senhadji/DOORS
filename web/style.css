@@ -336,6 +336,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--text); outline-
 .actions { position: absolute; z-index: 2; top: 14px; right: 16px; display: flex; gap: 10px; }
 .actions .pill { min-height: 38px; padding: 0 14px; font-size: 14px; background: var(--map); }
 #train:empty, #plan:empty, #policies:empty { display: none; }
+/* Le lien vers l'autre langue, dans l'en-tête. */
+.language { color: var(--text-2); font-size: 14px; font-weight: 600; text-decoration: underline; white-space: nowrap; }
+.language:hover { color: var(--text); }
 .status { margin: 0; padding: 0 32px 20px; color: var(--text); font-weight: 600; }
 .status:empty { display: none; }
 

@@ -1,7 +1,7 @@
 // La carte du réseau : l'arbre des trajets. Une voie par type de vie, le trajet en cours, les branches
 // qui le quittent aux gares de correspondance, et les stations.
 // Géométrie d'affichage seulement : aucun montant n'est calculé ici.
-import { T } from './texts.fr.js';
+import { T } from './i18n.js';
 import { ageAtMonth, chf, durationOf, ranges } from './format.js';
 
 export const VIEW = { width: 980, height: 520 };

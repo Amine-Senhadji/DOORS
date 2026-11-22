@@ -2,6 +2,8 @@
 // Les formes des réponses sont décrites dans docs/API.md.
 //
 // Les routes de la version 3 (/worlds, /path, /node, /pathways) sont servies par api/main.py, à partir de engine/tree.py.
+import { lang } from './i18n.js';
+
 const V3 = '';
 
 // Les hypothèses modifiées dans le tiroir : elles accompagnent chaque demande de calcul.
@@ -25,7 +27,9 @@ export function setWorlds(ids) {
 }
 const tested = () => (mondes ? { mondes } : {});
 
-async function call(url, body) {
+async function call(address, body) {
+  // Chaque appel dit dans quelle langue le moteur doit écrire ses phrases. Les chiffres sont les mêmes.
+  const url = `${address}${address.includes('?') ? '&' : '?'}lang=${lang}`;
   let response;
   try {
     response = await fetch(url, body === undefined ? undefined : {

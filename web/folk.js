@@ -1,6 +1,6 @@
 // La feuille « Une règle répandue, à l'épreuve » : le moteur teste « trois mois d'épargne de précaution suffisent »
 // dans deux états d'Alexia, au même âge. Chaque chiffre, et la phrase, viennent de la route /folk-rule.
-import { T } from './texts.fr.js';
+import { T } from './i18n.js';
 import { ageAtMonth, chf, plain } from './format.js';
 
 const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

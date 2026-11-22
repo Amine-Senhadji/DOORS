@@ -21,10 +21,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from engine import folk
+from urllib.parse import parse_qs
+
+from engine import folk, i18n
 from engine import policy as policies
 from engine import worlds as named_worlds
-from engine.assumptions import ASSUMPTIONS
+from engine.assumptions import localized
+from engine.i18n import say
 from engine.checks import run_checks
 from engine.explore import compare, frontier
 from engine.simulate import load_scenario, run, theta_for
@@ -45,11 +48,30 @@ app = FastAPI(title="Doors : jumeau financier", version="0.1.0", lifespan=lifesp
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
+class Language:
+    """La langue des phrases d'une demande : `?lang=fr` ou `?lang=en` dans son adresse. Sans elle, la langue par défaut.
+    Les chiffres sont les mêmes dans les deux langues."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        asked = parse_qs(scope.get("query_string", b"").decode()).get("lang", [None])[0] if scope["type"] == "http" else None
+        if asked in i18n.LANGUAGES:
+            with i18n.use(asked):
+                await self.inner(scope, receive, send)
+        else:
+            await self.inner(scope, receive, send)
+
+
+app.add_middleware(Language)
+
+
 @lru_cache(maxsize=16)
 def _scenario(scenario_id: str):
     path = SCENARIOS / f"{scenario_id}.json"
     if not path.is_file():
-        raise HTTPException(404, f"Scénario inconnu « {scenario_id} ».")
+        raise HTTPException(404, say(f"Unknown scenario “{scenario_id}”.", f"Scénario inconnu « {scenario_id} »."))
     return load_scenario(path)
 
 
@@ -129,14 +151,15 @@ def get_scenario(scenario_id: str):
 
 @app.get("/assumptions")
 def get_assumptions():
-    return [asdict(a) for a in ASSUMPTIONS]
+    return [asdict(a) for a in localized()]
 
 
 @app.post("/simulate")
 def post_simulate(req: SimulateIn):
     world = _world(req.scenario_id, req.world_id, req.assumptions)
     r = _guard(run, _scenario(req.scenario_id), req.line_id, req.assumptions, world, req.world_id)
-    return asdict(r)
+    answer = asdict(r)
+    return {**answer, "months": i18n.months(answer["months"])}
 
 
 @app.post("/compare")
@@ -146,7 +169,7 @@ def post_compare(req: CompareIn):
 
 
 @lru_cache(maxsize=64)
-def _frontier_cached(payload: str):
+def _frontier_cached(payload: str, lang: str):
     req = FrontierIn.model_validate_json(payload)
     return _guard(frontier, _scenario(req.scenario_id), req.station_id, req.x.model_dump(),
                   req.y.model_dump(), req.criterion, req.assumptions)
@@ -155,7 +178,7 @@ def _frontier_cached(payload: str):
 @app.post("/frontier")
 def post_frontier(req: FrontierIn):
     # Le cache rend instantané un retour à une carte déjà vue.
-    return _frontier_cached(req.model_dump_json())
+    return _frontier_cached(req.model_dump_json(), i18n.current())      # la carte porte des phrases : une par langue
 
 
 @app.get("/checks")
@@ -175,17 +198,18 @@ def post_checks_starter_kit():
     problems = [{"test": str(test), "message": trace.strip().splitlines()[-1][:300]} for test, trace in result.failures + result.errors]
     return {"ok": result.wasSuccessful() and result.testsRun > 0, "total": result.testsRun, "failed": len(problems),
             "duration_s": round(time.perf_counter() - started, 3), "ran_at": datetime.now().isoformat(timespec="seconds"),
-            "title": "Égalité avec le moteur de référence du starter-kit",
-            "detail": "Les 360 soldes mensuels des trois scénarios du starter-kit, au centime, une fois les règles suisses neutralisées.",
+            "title": say("Equality with the starter kit's reference engine", "Égalité avec le moteur de référence du starter-kit"),
+            "detail": say("The 360 monthly balances of the starter kit's three scenarios, to the cent, once the Swiss rules are switched off.",
+                          "Les 360 soldes mensuels des trois scénarios du starter-kit, au centime, une fois les règles suisses neutralisées."),
             "source": "tests/test_vs_starter_kit.py", "failures": problems}
 
 
 @app.get("/limits")
 def get_limits():
-    """Les limites connues du modèle : la liste de docs/limits.fr.md, lue telle quelle."""
-    source = ROOT / "docs" / "limits.fr.md"
-    limits = [line[2:].strip() for line in source.read_text(encoding="utf-8").splitlines() if line.startswith("- ")]
-    return {"source": "docs/limits.fr.md", "limits": limits}
+    """Les limites connues du modèle : la liste de docs/LIMITS.md (ou de docs/limits.fr.md en français), lue telle quelle."""
+    name = say("docs/LIMITS.md", "docs/limits.fr.md")
+    limits = [line[2:].strip() for line in (ROOT / name).read_text(encoding="utf-8").splitlines() if line.startswith("- ")]
+    return {"source": name, "limits": limits}
 
 
 # ----------------------------------------------------------------- version 3 : l'arbre des trajets
@@ -261,7 +285,7 @@ def post_folk_rule(req: TripIn):
 
 @app.post("/ask")
 def post_ask():
-    raise HTTPException(501, "Le guichet IA n'est pas encore branché (étape 6).")
+    raise HTTPException(501, say("The AI desk is not connected.", "Le guichet IA n'est pas encore branché."))
 
 
 # --- Interface (web/) : la page est servie par ce même serveur.

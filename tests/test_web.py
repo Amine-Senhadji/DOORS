@@ -6,6 +6,10 @@ Lancer depuis la racine du dépôt :
 """
 from __future__ import annotations
 
+from engine import i18n
+
+i18n.set_default("fr")      # ces tests attendent les phrases du moteur en français ; l'anglais est testé dans tests/test_english.py
+
 import html
 import re
 import shutil
@@ -127,9 +131,10 @@ class Served(unittest.TestCase):
     def test_the_page_and_its_modules_are_served(self):
         page = self.c.get("/")
         self.assertEqual(page.status_code, 200)
-        self.assertIn('<html lang="fr">', page.text)
+        self.assertIn('<html lang="en">', page.text)          # la page s'annonce en anglais ; ?lang=fr la passe en français
         for path, kind in [("/app.js", "javascript"), ("/api.js", "javascript"), ("/map.js", "javascript"),
-                           ("/card.js", "javascript"), ("/texts.fr.js", "javascript"), ("/style.css", "text/css"),
+                           ("/card.js", "javascript"), ("/i18n.js", "javascript"), ("/texts.en.js", "javascript"),
+                           ("/texts.fr.js", "javascript"), ("/style.css", "text/css"),
                            ("/vendor/barlow/barlow-latin-400-normal.woff2", "font/woff2")]:
             with self.subTest(path=path):
                 response = self.c.get(path)
@@ -220,7 +225,7 @@ class InChrome(unittest.TestCase):
         cls.lines = {b["id"]: b for b in cls.c.post("/node", json={"path": [], "gare_month": 0}).json()["branches"]}
 
     def page(self, query: str = "") -> tuple[str, str]:
-        dom = dom_of(f"/{query}")
+        dom = dom_of(f"/{query}{'&' if query else '?'}lang=fr")      # ces tests lisent la page en français
         self.assertIn('data-ready="1"', dom, dom[-800:])
         return dom, re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", dom)))
 

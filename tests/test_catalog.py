@@ -1,6 +1,10 @@
 """Tests du catalogue : les 120 scénarios sont encodés, et chaque scénario couvert est sain."""
 from __future__ import annotations
 
+from engine import i18n
+
+i18n.set_default("fr")      # ces tests attendent les phrases du moteur en français ; l'anglais est testé dans tests/test_english.py
+
 import unittest
 
 from engine.catalog import SPECS, catalog_names, run_spec

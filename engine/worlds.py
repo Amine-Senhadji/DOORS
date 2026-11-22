@@ -13,7 +13,9 @@ from __future__ import annotations
 from dataclasses import dataclass, fields, replace
 
 from engine.catalog import ALEXIA, SPECS, build_world, cautious, job_long, student_job
+from engine import english
 from engine.contract import World
+from engine.i18n import say
 from engine.simulate import reference_world
 
 AGE0 = ALEXIA.profile.age
@@ -61,11 +63,17 @@ FIELD_LABELS = {"market_return_monthly": "Rendement des placements, par mois", "
                 "house_return_monthly": "Évolution du prix des logements, par mois", "student_job_lost": "Job étudiant perdu"}
 
 
+def name_of(world: NamedWorld) -> str:
+    """Le nom d'un monde, dans la langue courante."""
+    return say(english.WORLDS[world.id][0], world.name)
+
+
 def split(world_id) -> tuple[str, int | None]:
     """« krach@25 » ou { "type": "krach", "age": 25 } : le type, et l'âge demandé (None : l'âge d'origine)."""
     if isinstance(world_id, dict):
         if "type" not in world_id:
-            raise ValueError("Une crise se décrit par un type et un âge : { \"type\": \"krach\", \"age\": 25 }.")
+            raise ValueError(say('A crisis is described by a type and an age: { "type": "krach", "age": 25 }.',
+                                 'Une crise se décrit par un type et un âge : { "type": "krach", "age": 25 }.'))
         kind, age = str(world_id["type"]), world_id.get("age")
     else:
         kind, _, age = str(world_id).partition("~")[0].partition("@")
@@ -77,7 +85,8 @@ def split(world_id) -> tuple[str, int | None]:
             raise ValueError
         return kind, int(float(age))
     except (TypeError, ValueError):
-        raise ValueError(f"L'âge d'une crise est un nombre entier d'années : « {age} » n'en est pas un.") from None
+        raise ValueError(say(f"The age of a crisis is a whole number of years: “{age}” is not one.",
+                             f"L'âge d'une crise est un nombre entier d'années : « {age} » n'en est pas un.")) from None
 
 
 def gravity(world_id) -> int:
@@ -88,9 +97,11 @@ def gravity(world_id) -> int:
     try:
         value = int(float(asked))
     except (TypeError, ValueError):
-        raise ValueError(f"La gravité d'une crise est un nombre, en pour cent : « {asked} » n'en est pas un.") from None
+        raise ValueError(say(f"The severity of a crisis is a number, in percent: “{asked}” is not one.",
+                             f"La gravité d'une crise est un nombre, en pour cent : « {asked} » n'en est pas un.")) from None
     if not GRAVITY[0] <= value <= GRAVITY[1]:
-        raise ValueError(f"La gravité d'une crise se règle de {GRAVITY[0]} à {GRAVITY[1]} % : {value} % est refusé.")
+        raise ValueError(say(f"The severity of a crisis can be set from {GRAVITY[0]} to {GRAVITY[1]}%: {value}% is refused.",
+                             f"La gravité d'une crise se règle de {GRAVITY[0]} à {GRAVITY[1]} % : {value} % est refusé."))
     return value
 
 
@@ -98,7 +109,8 @@ def named(world_id) -> NamedWorld:
     kind = split(world_id)[0]
     world = next((w for w in WORLDS + EXTRA if w.id == kind), None)
     if world is None:
-        raise KeyError(f"Monde « {kind} » pas encore disponible. Mondes : {list(WORLD_IDS)}")
+        raise KeyError(say(f"World “{kind}” not available yet. Worlds: {list(WORLD_IDS)}",
+                           f"Monde « {kind} » pas encore disponible. Mondes : {list(WORLD_IDS)}"))
     return world
 
 
@@ -150,12 +162,14 @@ def canonical(world_id, th: dict, horizon: int, age0: int = AGE0) -> str:
     original = default_age(th, world.id, horizon, age0)
     strength = "" if percent == 100 else f"~{percent}"
     if original is None and (age is not None or strength):
-        raise ValueError(f"« {world.name} » n'a ni âge ni gravité : ce n'est pas une crise.")
+        raise ValueError(say(f"“{name_of(world)}” has neither an age nor a severity: it is not a crisis.",
+                             f"« {world.name} » n'a ni âge ni gravité : ce n'est pas une crise."))
     if age is None or age == original:
         return world.id + strength
     low, high = ages(horizon, age0)
     if not low <= age <= high:
-        raise ValueError(f"L'âge d'une crise se règle de {low} à {high} ans : {age} ans est refusé.")
+        raise ValueError(say(f"The age of a crisis can be set from {low} to {high}: {age} is refused.",
+                             f"L'âge d'une crise se règle de {low} à {high} ans : {age} ans est refusé."))
     return f"{world.id}@{age}{strength}"
 
 
@@ -183,7 +197,8 @@ def asked(mondes, th: dict | None = None, horizon: int | None = None, age0: int 
     if mondes is None:
         return WORLD_IDS
     if isinstance(mondes, dict):
-        raise KeyError("Le tirage au hasard de mondes n'est pas encore disponible : mondes nommés seulement.")
+        raise KeyError(say("Random draws of worlds are not available yet: named worlds only.",
+                           "Le tirage au hasard de mondes n'est pas encore disponible : mondes nommés seulement."))
     if th is None or horizon is None:
         for world_id in mondes:
             named(world_id)
@@ -194,7 +209,7 @@ def asked(mondes, th: dict | None = None, horizon: int | None = None, age0: int 
         if world not in out:
             out.append(world)
     if not out:
-        raise ValueError("Il faut au moins un monde à tester.")
+        raise ValueError(say("At least one world to test is needed.", "Il faut au moins un monde à tester."))
     return tuple(out)
 
 
@@ -210,12 +225,13 @@ def describe(th: dict, horizon: int, age0: int, mondes=None) -> list[dict]:
             months = [t for t in range(horizon) if getattr(built[t], field.name) != getattr(reference[t], field.name)]
             if months:
                 first, last = months[0], months[-1]
-                parameters.append({"field": field.name, "label": FIELD_LABELS.get(field.name, field.name),
+                parameters.append({"field": field.name, "label": say(english.WORLD_FIELDS.get(field.name, field.name), FIELD_LABELS.get(field.name, field.name)),
                                    "from_month": first, "to_month": last + 1, "months": len(months),
                                    "from_age": age0 + first / 12, "to_age": age0 + (last + 1) / 12,
                                    "value": getattr(built[last], field.name), "reference": getattr(reference[last], field.name)})
         original = default_age(th, world.id, horizon, age0)
-        out.append({"id": world_id, "type": world.id, "name": world.name, "description": world.description,
+        out.append({"id": world_id, "type": world.id, "name": name_of(world),
+                    "description": say(english.WORLDS[world.id][1], world.description),
                     "gravity": gravity(world_id),
                     "catalog_id": world.catalog_id, "age": age if age is not None else original, "default_age": original,
                     "adjustable": original is not None, "min_age": low, "max_age": high, "parameters": parameters})

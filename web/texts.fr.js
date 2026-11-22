@@ -12,6 +12,11 @@ const open = (n, total) => `${plural(n, 'station ouverte', 'stations ouvertes')}
 
 export const T = {
   brand: 'Doors',
+  // Comment cette langue écrit les nombres, et comment passer à l'autre.
+  decimalMark: ',',
+  percent: (written) => `${written} %`,
+  language: { other: 'en', switchTo: 'English', label: 'Langue' },
+  quoted: (text) => `« ${text} »`,
   who: (p, cash) => `${p.name}, ${p.age} ans, ${p.city}, ${cash} de côté`,
   banner: 'Scénarios sous hypothèses, données fictives. Ni prévision, ni conseil.',
 

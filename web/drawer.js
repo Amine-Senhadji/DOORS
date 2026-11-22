@@ -1,7 +1,7 @@
 // Le tiroir : les hypothèses avec leur nature et leur source, les vérifications en direct, le registre d'un mois
 // du trajet affiché, et les limites du modèle. Fermé par défaut.
 // Chaque chiffre vient de l'API ; les phrases sont dans texts.fr.js.
-import { T } from './texts.fr.js';
+import { T } from './i18n.js';
 import { ageAtMonth, chf, plain } from './format.js';
 
 const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
