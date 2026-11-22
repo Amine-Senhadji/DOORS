@@ -9,12 +9,13 @@ import offline  # noqa: F401  the recorded mode, and no client of the SDK: befor
 
 import ast
 import json
+import re
 import unittest
 from pathlib import Path
 
 from ai import stress
 from ai import vocabulary as V
-from ai.checker import Fact
+from ai.checker import Fact, check
 from ai.model import Reply, Scripted, answers, calls, says
 from engine import i18n
 from engine import worlds as W
@@ -188,7 +189,14 @@ class TheSearch(unittest.TestCase):
         changed = {"loyer": 1500.0}
         model = Scripted([calls(stress.TOOL, {"worlds": [LONG]}, "one"), says("Done."), writes(lambda world: PLAIN)])
         result = stress.run(TREE, STORY, model, overrides=changed, lang="en")
-        self.assertIn("Assumptions changed by Alexia: loyer = 1500.0", model.requests[0]["messages"][0]["content"])
+        # She is named what she changed as the drawer shows it, not by the key the engine keeps it under.
+        self.assertIn("\n\nAssumptions changed by Alexia\n- Rent [CHF/month]: 1'500 (the engine starts from 900)\n\nThe six goals.",
+                      model.requests[0]["messages"][0]["content"])
+        self.assertNotIn("loyer", model.requests[0]["messages"][0]["content"])
+        rate = Scripted([says("Nothing to test."), says("Still nothing.")])
+        stress.run(TREE, STORY, rate, overrides={"rendement_placements_annuel": 0.05, "not_an_assumption": 3.0}, lang="fr")
+        self.assertIn("\nAssumptions changed by Alexia\n- Return on investments (reference world) [%/year]: 5 (the engine starts from 3)\n\n",
+                      rate.requests[0]["messages"][0]["content"])
         th = theta_for(ALEXIA, changed)
         direct = run_ops(ALEXIA.profile, blocks_to_ops(STORY, th, H), H, th, W.build(th, LONG, H, AGE0))
         self.assertEqual((result["tested"][0]["peak_financing_chf"], result["tested"][0]["net_worth_end_chf"]),
@@ -345,8 +353,8 @@ class TheExplanations(unittest.TestCase):
         result, model = self.search_then(writes(slip), writes(right))
         system = model.requests[2]["system"]
         for words in ('Never put the number of goals kept with no crisis next to "keep" in the sentence that says what happens in that world.',
-                      'write it in a sentence of its own that says "with no crisis": "With no crisis the route keeps 3 goals."',
-                      "« Sans crise, le trajet garde 3 objectifs. »", 'Next to "keep", "hold" or "lose"'):
+                      'write it in a sentence of its own that says "with no crisis": "With no crisis the route keeps 3 goals." The same holds',
+                      'Next to "keep", "hold" or "lose"', 'Next to "borrow" or "finance"'):
             self.assertIn(words, system)
         self.assertIn("“3” stands next to “keep”: the number of goals kept in this world is 1. To give the figure of the route with no crisis, write it in a "
                       "sentence of its own that says “with no crisis”.", model.requests[3]["messages"][-1]["content"])
@@ -396,6 +404,39 @@ class TheExplanations(unittest.TestCase):
         self.assertIn("Figures common to every world\n- Goals in all: 6\n- Goals kept with no crisis: 3\n- Goals lost with no crisis: 0\n"
                       "- Peak borrowing with no crisis: 14'234 CHF", brief)
         self.assertIn("- Career change: amount asked: 39'366 CHF\n- Career change: amount reached with no crisis: 42'200 CHF", brief)
+
+    def test_the_prompt_of_the_explanations_names_the_words_of_one_language_only(self):
+        """The instructions are in English for both languages. The words to mind and the example are those of the language
+        the model writes in: a request for an English text holds no French, and a request for a French text names the
+        French words the checker looks at."""
+        english = stress.EXPLAIN.format(**stress.WORDS["en"])
+        french = stress.EXPLAIN.format(**stress.WORDS["fr"])
+        self.assertEqual(set(stress.WORDS["en"]), set(stress.WORDS["fr"]))
+        self.assertNotIn("{", english + french)
+        self.assertIsNone(re.search(r"[àâçéèêëîïôöùûüœ«»]|\b(?:garde\w*|tenir|perdre|emprunt\w*|financer|moitié|risque|meilleur|sans crise|mois|objectifs)\b", english),
+                          "no French in the prompt for an English text")
+        for words in ('in English', 'addressed to Alexia ("you")', "43'123 CHF, −5'145 CHF, 12 months", '"double", "half", "twice", "a third"',
+                      "chance, probability, likely, odds, risk, best, recommend, advise, guarantee. Do not rank"):
+            self.assertIn(words, english)
+        for words in ("in French", "addressed to Alexia (« tu »)", "43'123 CHF, −5'145 CHF, 12 mois", "« double », « moitié », « deux fois », « un tiers »",
+                      "Next to « garder », « tenir » or « perdre », in any of their forms, a number of goals", "Next to « emprunter », « emprunt » or « financer », an amount",
+                      "next to « garder » in the sentence", "that says « sans crise »: « Sans crise, le trajet garde 3 objectifs. » The same holds",
+                      "chance, probabilité, probable, risque, meilleur, recommander, conseiller, garantir. Do not rank"):
+            self.assertIn(words, french)
+        self.assertIsNone(re.search(r'"keep"|"hold"|"lose"|"borrow"|"with no crisis"|probability|recommend', french), "and no English word to mind in the other")
+        # In both: the name of a world comes from the quote given, and its identifier stays out of the text.
+        for prompt in (english, french):
+            self.assertIn('To name a world or one of its crises, copy the name given as a quote. The identifier of a world, the code with an "@", goes in the '
+                          'field "world" of your answer and nowhere in your text.', prompt)
+        # Every word the prompt tells the model to mind is one the checker does mind, in that language.
+        for lang, text, kinds in (("en", "You keep 2 goals.", "role"), ("fr", "Tu gardes 2 objectifs.", "role"), ("fr", "Tu tiens 2 objectifs.", "role"),
+                                  ("en", "You borrow 9 CHF.", "role"), ("fr", "Tu empruntes 9 CHF.", "role"), ("fr", "Un emprunt de 9 CHF.", "role"),
+                                  ("en", "This is the best route.", "banned"), ("fr", "C'est le meilleur trajet.", "banned"), ("fr", "Le risque est là.", "banned"),
+                                  ("en", "Twice as hard.", "ratio"), ("fr", "Deux fois plus dur, la moitié en moins.", "ratio")):
+            facts = [Fact.count(1, "kept", "w", "kept"), Fact.chf(43123, "borrowed", "w", "borrowed"), Fact.count(2, "crises", "w"), Fact.chf(9, "other", "w")]
+            report = check(text, facts, [], [], lang)
+            with self.subTest(text=text):
+                self.assertIn(kinds, {problem.kind for problem in report.problems})
 
     def test_the_explanation_is_asked_in_the_language_of_the_screen_with_the_same_figures(self):
         french, model = self.search_then(writes(lambda world: "Cette crise arrive au pire moment."), lang="fr")

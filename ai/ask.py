@@ -124,9 +124,7 @@ def _age(month: int, age0: int) -> str:
     return say(f"{years} years {months} month{'' if months == 1 else 's'}", f"{years} ans et {months} mois")
 
 
-def _shown(assumption, value: float) -> float:
-    """An assumption as it is typed in the drawer: a share is shown in percent."""
-    return round(value * 100, 6) if assumption.unit.startswith("%") else value
+_shown = V.shown                    # an assumption as it is typed in the drawer: a share is shown in percent
 
 
 def form(th: dict, horizon: int, age0: int) -> dict:

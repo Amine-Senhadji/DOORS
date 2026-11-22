@@ -176,6 +176,8 @@ class TheDryRun(Commands):
         self.assertEqual((said.count("--- system prompt of the search ---"), said.count("--- first message ---")), (1, 1))
         written = json.loads((self.folder / "dry.benchmark.json").read_text(encoding="utf-8"))
         self.assertEqual((written["runs_to_make"], len(written["examples"]), {len(example["requests"]) for example in written["examples"]}), (30, 6, {6}))
+        self.assertIsNone(written["from_the_runs_already_made"])                         # before any run is made, there is nothing measured
+        self.assertNotIn("Measured on", said)
         self.assertFalse((self.folder / "agent.json").exists())
         code, said = self.run_(BENCH, "live", "--dry-run", "--brief", "--route", "berlin", "--runs", "3")
         self.assertIn("TOTAL for 3 runs:", said)
@@ -323,6 +325,19 @@ class TheBenchmarkWithAModel(Commands):
                                                    "by_language": {language: {"count": 3, "accepted": 3, "rejected": 0, "accepted_after_rewrites": {"0": 3},
                                                                               "mean_rewrites_when_accepted": 0.0} for language in ("en", "fr")}})
         self.assertEqual((saved["total"]["runs"], saved["total"]["cost_usd"], saved["total"]["explanations"]["count"]), (2, round(12 * TURN, 6), 6))
+        # A dry run now also says what the runs left would cost at the price of the runs made: the most direct estimate.
+        code, said = self.run_(BENCH, "live", "--dry-run", "--brief", "--route", "story_a", "--runs", "5", "--parallel", "2")
+        self.assertEqual((code, len(self.made)), (0, 2))                               # nothing is run by a dry run
+        self.assertIn("TOTAL for 3 runs:", said)
+        self.assertIn("Measured on the 2 runs already made: 0.0180 USD a run on average (from 0.0180 USD to 0.0180 USD), ", said)
+        self.assertIn("At that price, the 3 runs left: about 0.0540 USD (from 0.0540 USD to 0.0540 USD), and about ", said)
+        self.assertIn(" minutes with 2 at a time.", said)
+        projection = json.loads((self.folder / "dry.benchmark.json").read_text(encoding="utf-8"))["from_the_runs_already_made"]
+        self.assertEqual((projection["runs_made"], projection["runs_left"], round(projection["usd"], 6)), (2, 3, 0.054))
+        self.assertEqual(BENCH.projected([{"cost_usd": 0.2, "seconds": 100}, {"cost_usd": 0.4, "seconds": 200}, {"error": {}}, {"cost_usd": None, "seconds": 9}], 24, 3),
+                         {"runs_made": 2, "usd_a_run": 0.30000000000000004, "least_usd_a_run": 0.2, "most_usd_a_run": 0.4, "seconds_a_run": 150.0, "runs_left": 24,
+                          "usd": 0.30000000000000004 * 24, "least_usd": 0.2 * 24, "most_usd": 0.4 * 24, "minutes": 150.0 * 24 / 3 / 60})
+        self.assertIsNone(BENCH.projected([{"error": {}}], 30, 3))
         # A third run asked: only that one is made.
         code, said = self.run_(BENCH, "live", "--route", "story_a", "--runs", "3")
         self.assertEqual((code, self.made[2:], len(self.saved()["routes"]["story_a"]["runs"])), (0, [("story_a", 2)], 3))

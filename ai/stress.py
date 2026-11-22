@@ -24,6 +24,7 @@ from ai.checker import Fact, Outcome, Quote, facts_in, rejected_label, supervise
 from ai.model import Model
 from engine import i18n
 from engine import worlds as W
+from engine.assumptions import ASSUMPTIONS, by_key
 from engine.blocks import blocks_to_ops, legs_of, normalize
 from engine.explore import doors_of, margins_of
 from engine.i18n import say
@@ -60,26 +61,41 @@ REMINDER = f"Use the {TOOL} tool to test worlds: nothing has been tested yet."
 
 EXPLAIN = """You write short explanations for Doors, a financial twin for a student in Switzerland. The engine has simulated \
 Alexia's ten-year route in a few hard worlds. For each world you are given, write one or two sentences, in {language}, \
-that say what happens to the route in that world and why, in plain words, addressed to Alexia ("you").
+that say what happens to the route in that world and why, in plain words, addressed to Alexia ({you}).
 
 Every figure you write is checked by code against the engine's figures for that world, and a text that fails the check \
 is not shown. So:
 - Use only the figures listed for that world or among the common figures. Copy each one exactly as it is written, with \
-its sign and its unit: 43'123 CHF, −5'145 CHF, 12 months. Do not round, do not abbreviate, and do not compute a \
+its sign and its unit: {figures}. Do not round, do not abbreviate, and do not compute a \
 difference, a sum, a ratio or a percentage of your own.
-- Do not write "double", "half", "twice", "a third" or any other ratio.
-- Next to "keep", "hold" or "lose", a number of goals must be the number of goals kept or lost in that world. Next to \
-"borrow" or "finance", an amount must be the peak borrowing of that world.
+- Do not write {ratios} or any other ratio.
+- Next to {kept}, a number of goals must be the number of goals kept or lost in that world. Next to \
+{borrowed}, an amount must be the peak borrowing of that world.
 - The figures of the route with no crisis are not the figures of that world. Never put the number of goals kept with no \
-crisis next to "keep" in the sentence that says what happens in that world. If you want to give it, write it in a sentence \
-of its own that says "with no crisis": "With no crisis the route keeps 3 goals." In French: « Sans crise, le trajet garde \
-3 objectifs. » The same holds for the peak borrowing with no crisis.
+crisis next to {keep} in the sentence that says what happens in that world. If you want to give it, write it in a sentence \
+of its own that says {no_crisis}: {example} The same holds for the peak borrowing with no crisis.
 - A sentence given as a quote may be copied word for word, and only word for word.
-- Name a world only by its identifier, as it is given.
-- Never write these words or words of their family: chance, probability, likely, odds, risk, best, recommend, advise, \
-guarantee; in French: chance, probabilité, probable, risque, meilleur, recommander, conseiller, garantir. Do not rank \
+- The screen shows the name of each world above your text: you do not have to name it. To name a world or one of its \
+crises, copy the name given as a quote. The identifier of a world, the code with an "@", goes in the field "world" of \
+your answer and nowhere in your text.
+- Never write these words or words of their family: {banned}. Do not rank \
 options and do not tell Alexia what to do: say what the engine found.
 - You need few figures. A sentence with no figure is accepted."""
+
+# What the prompt of the explanations says in the words of the language asked for. The instructions are in English in
+# both cases; the words the model must mind, and the example, are in the language it writes in. So a request for an
+# English text holds no French, and a request for a French text names the French words the checker looks at.
+WORDS = {
+    "en": {"language": "English", "you": '"you"', "figures": "43'123 CHF, −5'145 CHF, 12 months",
+           "ratios": '"double", "half", "twice", "a third"', "kept": '"keep", "hold" or "lose"', "borrowed": '"borrow" or "finance"',
+           "keep": '"keep"', "no_crisis": '"with no crisis"', "example": '"With no crisis the route keeps 3 goals."',
+           "banned": "chance, probability, likely, odds, risk, best, recommend, advise, guarantee"},
+    "fr": {"language": "French", "you": "« tu »", "figures": "43'123 CHF, −5'145 CHF, 12 mois",
+           "ratios": "« double », « moitié », « deux fois », « un tiers »", "kept": "« garder », « tenir » or « perdre », in any of their forms",
+           "borrowed": "« emprunter », « emprunt » or « financer »", "keep": "« garder »", "no_crisis": "« sans crise »",
+           "example": "« Sans crise, le trajet garde 3 objectifs. »",
+           "banned": "chance, probabilité, probable, risque, meilleur, recommander, conseiller, garantir"},
+}
 
 
 def _age(month: int, age0: int) -> str:
@@ -181,8 +197,12 @@ def _brief(route: Route) -> str:
     lines = ["The route to test"]
     lines += [f"- {leg['name']}, from {_age(leg['from_month'], route.age0)} to {_age(leg['to_month'], route.age0)}"
               for leg in legs_of(route.path, route.th, route.h)]
-    changed = ", ".join(f"{key} = {value}" for key, value in sorted(route.overrides.items()))
-    lines += ["", f"Assumptions changed by Alexia: {changed or 'none'}", "",
+    # What Alexia changed, as the drawer shows it: the name of the assumption, its unit, her value and the engine's own.
+    names, engine, started = by_key(), {assumption.key: assumption for assumption in ASSUMPTIONS}, route.tree.theta(None)
+    written = lambda key, value: Fact.number(V.shown(engine[key], value), "").written()
+    changed = [f"- {names[key].label} [{names[key].unit}]: {written(key, value)} (the engine starts from {written(key, started[key])})"
+               for key, value in sorted(route.overrides.items()) if key in engine and V.countable(value)]
+    lines += ["", "Assumptions changed by Alexia" + ("" if changed else ": none"), *changed, "",
               f"The six goals. With no crisis the route keeps {sum(route.calm_goals.values())} of {len(route.calm_goals)}."]
     for key, goal in goals.items():
         when = "over the whole route" if goal["whole_trip"] else f"at {goal['age']}"
@@ -414,7 +434,7 @@ def explain(route: Route, model: Model, ranked: list[dict], lang: str) -> tuple[
         if not worlds:                                  # nothing breaks the route among what was tested: nothing to explain
             return {}, {}, dict(usage)
         common, facts = common_facts(route), {world: world_facts(route, world) for world in worlds}
-        system = EXPLAIN.format(language=say("English", "French"))
+        system = EXPLAIN.format(**WORDS[lang])
         asked = [say("Explain these worlds, one or two sentences each.", "Explique ces mondes, une ou deux phrases pour chacun."), ""]
         for summary in ranked:
             asked += [f"{say('World', 'Monde')} {summary['world']}: {route.name(summary['world'])}", *_listed(facts[summary["world"]]), ""]

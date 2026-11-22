@@ -208,6 +208,11 @@ def stored(assumption, said: float, unit: str) -> float:
     return readings(assumption, said, unit)[0]
 
 
+def shown(assumption, value: float) -> float:
+    """An assumption as it is typed in the drawer: a share is shown in percent."""
+    return round(value * 100, 6) if assumption.unit.startswith("%") else value
+
+
 def describe(th: dict, horizon: int, age0: int) -> dict:
     """The space as it is told to the model and to the screen: the types with their names, the ages, the severities,
     and how many worlds that makes."""

@@ -11,6 +11,8 @@ import offline  # noqa: F401  the recorded mode, and no client of the SDK: befor
 import copy
 import json
 import os
+import random
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,11 +22,20 @@ from ai import ask as asking
 from ai import benchmark, cost, recordings, rehearsal, service
 from ai import model as M
 from ai import stress as stressing
+from ai import vocabulary as V
+from ai.checker import Fact, check
 from ai.model import Live, Recorder, Reply, Scripted, Stale, answers, request_for, says
 from engine import i18n
-from engine.blocks import normalize
+from engine import worlds as W
+from engine.assumptions import ASSUMPTIONS
+from engine.blocks import BLOCKS, normalize
 from engine.simulate import load_scenario
 from engine.tree import Tree
+
+try:
+    import test_english
+except ImportError:  # pragma: no cover
+    test_english = None
 
 try:
     import anthropic
@@ -238,6 +249,92 @@ class TheSdk(unittest.TestCase):
         body = self.sent[0]["body"]
         self.assertEqual(body["output_config"], {"effort": "low", "format": {"type": "json_schema", "schema": asking.form(TREE.theta(None), H, TREE.age0)}})
         self.assertEqual((result["world"]["id"], result["model"], body["system"][0]["cache_control"]), ("chomage_6_mois@27~150", "claude-sonnet-5-5", {"type": "ephemeral"}))
+
+
+class TheLanguageOfWhatIsSent(unittest.TestCase):
+    """For an English text, what the model is sent is in English: the prompts, the route, the goals, the names of the
+    worlds, the notes of the ledger, the refusals of the engine, what the checker says of a refused text. The search is
+    held in English even when the screen is in French. What stays as the engine writes it: its identifiers, which are
+    code and not prose (krach, chomage_long, loyer, emploi), each given next to its English name."""
+
+    @classmethod
+    def setUpClass(cls):
+        named = [world.id for world in W.WORLDS + W.EXTRA] + [assumption.key for assumption in ASSUMPTIONS] + list(asking.BRANCHES) + list(BLOCKS) + list(asking.WHY)
+        cls.identifiers = re.compile(r"\b(?:" + "|".join(sorted(map(re.escape, named), key=len, reverse=True)) + r")\b")
+
+    def french(self, text) -> list[str]:
+        """The lines of a text where French is left once the identifiers of the engine are taken out."""
+        text = text if isinstance(text, str) else json.dumps(text, ensure_ascii=False)
+        return [line for line in text.splitlines() if test_english.FRENCH.search(self.identifiers.sub("", line))]
+
+    def sent(self, request: dict) -> list:
+        """Every text of a request: the system prompt, the tool, the form, and each message."""
+        return [request["system"], request["tools"], request["output"]] + [message["content"] for message in request["messages"]]
+
+    def test_the_detector_sees_french_and_leaves_the_identifiers_alone(self):
+        for text in ("Pas d'indemnité de chômage : 0 mois cotisés sur 24, il en faut 12", "Chômage long à 27 ans", "Krach des marchés", "un trajet", "12 mois",
+                     "Rendement des placements (monde de référence)", "« Sans crise »"):
+            self.assertTrue(self.french(text), text)
+        for text in ("- chomage_long: Long unemployment. Job loss for twelve months", "krach@24+chomage_long@27", "- loyer: Rent [CHF/month], 900 in the engine",
+                     "- emploi: take or keep a job in Lausanne", "Weaker franc at 21, severity 50%", "No unemployment benefit: 0 months contributed out of 24, 12 are required"):
+            self.assertEqual(self.french(text), [], text)
+
+    @unittest.skipIf(test_english is None, "the helpers of test_english are needed")
+    def test_an_english_exchange_holds_no_french_whatever_the_default_language_of_the_process(self):
+        sentences = ("What if I lost my job for 9 months at 27?", "With a rent of 1'500 CHF and a return of 5%, and 40'000 CHF set aside at 26.")
+        usual = i18n.current()
+        try:
+            for default in ("en", "fr"):
+                i18n.set_default(default)
+                requests = [request for route in benchmark.ROUTES for request in rehearsal.stress(TREE, benchmark.ROUTES[route], {"loyer": 1500.0}, "en")]
+                requests += [request for sentence in sentences for request in rehearsal.ask(TREE, sentence, STORY, {"loyer": 1500.0}, "en")]
+                self.assertEqual(len(requests), 3 * 6 + 2)
+                for number, request in enumerate(requests):
+                    for text in self.sent(request):
+                        with self.subTest(default=default, request=number):
+                            self.assertEqual(self.french(text), [])
+        finally:
+            i18n.set_default(usual)
+
+    @unittest.skipIf(test_english is None, "the helpers of test_english are needed")
+    def test_the_search_of_a_french_exchange_is_held_in_english_and_its_explanations_are_asked_in_french(self):
+        requests = rehearsal.stress(TREE, STORY, None, "fr")
+        search, explain = requests[:5], requests[5]
+        for request in search:
+            for text in self.sent(request):
+                self.assertEqual(self.french(text), [])
+        self.assertEqual(self.french(explain["system"])[:1], ["You write short explanations for Doors, a financial twin for a student in Switzerland. The engine has simulated "
+                                                              "Alexia's ten-year route in a few hard worlds. For each world you are given, write one or two sentences, in French, "
+                                                              "that say what happens to the route in that world and why, in plain words, addressed to Alexia (« tu »)."])
+        self.assertGreater(len(self.french(explain["messages"][0]["content"])), 60)             # the facts, in French
+
+    @unittest.skipIf(test_english is None, "the helpers of test_english are needed")
+    def test_the_names_the_notes_and_the_refusals_of_the_engine_are_in_english_for_any_world(self):
+        draw = random.Random(7)
+        notes = set()
+        with i18n.use("en"):
+            for key, path in benchmark.ROUTES.items():
+                route = stressing.Route(Tree(ALEXIA), path)
+                worlds = V.singles(route.th, route.h, route.age0)[::9] + draw.sample(list(V.pairs(route.th, route.h, route.age0)), 25) \
+                    + ["chomage_long@23+chomage_long@24", "perte_job_etudiant@26", "chomage_long@27"]
+                for world in worlds:
+                    listed = stressing._listed(stressing.world_facts(route, world))
+                    notes |= {line for line in listed if line.startswith("- Note of the ledger (quote): ")}
+                    for text in (listed, route.name(world), stressing._told(route, route.detail(world))):
+                        with self.subTest(route=key, world=world):
+                            self.assertEqual(self.french(text if isinstance(text, (str, dict)) else "\n".join(text)), [])
+                self.assertEqual(self.french("\n".join(stressing._listed(stressing.common_facts(route)))), [])
+                for asked in ("meteorite@24", "krach@31", "krach@24~80", "krach@24+inflation@22+chomage_long@27", "krach@24+krach@24~150", "prudent", "", 12):
+                    with self.assertRaises((ValueError, KeyError)) as refusal:
+                        V.accept(asked, route.th, route.h, route.age0)
+                    self.assertEqual(self.french(str(refusal.exception.args[0])), [])
+            # What the checker tells the model about a refused text.
+            report = check("You borrow about 43k CHF, double the usual, with a 30% chance, in krach@99.", [Fact.chf(43123.47, "Peak borrowing", "w", "borrowed")], ["w"], [], "en")
+            self.assertGreater(len(report.problems), 3)
+            self.assertEqual(self.french(report.feedback()), [])
+        # The notes of the ledger, which the simulation keeps in French, reach the model in English.
+        self.assertTrue({"- Note of the ledger (quote): “No unemployment benefit: 0 months contributed out of 24, 12 are required”",
+                         "- Note of the ledger (quote): “Student job lost: no income this month, and no unemployment benefit”"} <= notes, sorted(notes))
 
 
 class WhatGoesBackToTheModel(unittest.TestCase):

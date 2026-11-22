@@ -119,7 +119,20 @@ def told(run: dict, truth: dict) -> str:
             f"{run['seconds']} s, {usd(run['cost_usd'])}")
 
 
-def live_dry_run(todo: list[tuple[str, int]], fallback: bool, brief: bool) -> None:
+def projected(made: list[dict], left: int, parallel: int) -> dict | None:
+    """What the runs left would cost and how long they would take, at the price and the pace of the runs already made:
+    the most direct estimate there is. None before any run is made."""
+    made = [each for each in made if "error" not in each and each.get("cost_usd") is not None]
+    if not made:
+        return None
+    costs, seconds = [each["cost_usd"] for each in made], [each["seconds"] for each in made]
+    mean = sum(costs) / len(costs)
+    return {"runs_made": len(made), "usd_a_run": mean, "least_usd_a_run": min(costs), "most_usd_a_run": max(costs), "seconds_a_run": sum(seconds) / len(seconds),
+            "runs_left": left, "usd": mean * left, "least_usd": min(costs) * left, "most_usd": max(costs) * left,
+            "minutes": sum(seconds) / len(seconds) * left / max(1, parallel) / 60}
+
+
+def live_dry_run(todo: list[tuple[str, int]], fallback: bool, brief: bool, made: list[dict] = (), parallel: int = PARALLEL) -> None:
     measures = cost.measured(recordings.every())
     tree = Tree(load_scenario(benchmark.SCENARIO))
     print(rehearsal.HEADING)
@@ -154,14 +167,19 @@ def live_dry_run(todo: list[tuple[str, int]], fallback: bool, brief: bool) -> No
     if not estimates:
         print("Every run asked for is already made: nothing to send.")
         return
-    total = cost.add(estimates)
+    total, measured = cost.add(estimates), projected(list(made), len(todo), parallel)
     DRY_RUN.parent.mkdir(exist_ok=True)
-    DRY_RUN.write_text(json.dumps({"settings": rehearsal.settings(fallback), "runs_to_make": len(todo), "examples": written, "total": total},
-                                  ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    DRY_RUN.write_text(json.dumps({"settings": rehearsal.settings(fallback), "runs_to_make": len(todo), "examples": written, "total": total,
+                                   "from_the_runs_already_made": measured}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"TOTAL for {count(len(todo), 'run')}: {span(total['low']['requests'], total['high']['requests'])} requests, "
           f"{span(total['low']['usd'], total['high']['usd'], usd)}.")
     print(f"Ceiling, if every answer were as long as the API allows ({number(MAX_TOKENS)} tokens): {usd(total['ceiling_usd'])}.")
     print(f"One rehearsed run per route and language, word for word as the SDK would be given it: {recordings.shown(DRY_RUN)}")
+    if measured:
+        print(f"\nMeasured on the {count(measured['runs_made'], 'run')} already made: {usd(measured['usd_a_run'])} a run on average "
+              f"(from {usd(measured['least_usd_a_run'])} to {usd(measured['most_usd_a_run'])}), {measured['seconds_a_run']:.0f} s a run.")
+        print(f"At that price, the {count(measured['runs_left'], 'run')} left: about {usd(measured['usd'])} (from {usd(measured['least_usd'])} to "
+              f"{usd(measured['most_usd'])}), and about {measured['minutes']:.0f} minutes with {parallel} at a time.")
     print("\nNothing was sent.")
 
 
@@ -169,7 +187,7 @@ def live(wanted: int, parallel: int, fallback: bool, routes: list[str], fresh: b
     runs = {key: [] for key in benchmark.ROUTES} if fresh else kept()
     todo = missing(runs, wanted, routes)
     if dry:
-        live_dry_run(todo, fallback, brief)
+        live_dry_run(todo, fallback, brief, [each for key in runs for each in runs[key]], parallel)
         return 0
     if not os.environ.get("ANTHROPIC_API_KEY"):             # only whether it is there
         print("ANTHROPIC_API_KEY is not set in this terminal. Export it, then run this command again.\n"
