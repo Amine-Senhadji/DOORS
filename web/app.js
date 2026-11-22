@@ -84,7 +84,7 @@ function renderChips() {
 function renderTraffic() {
   const host = $('worlds');
   host.setAttribute('aria-label', T.traffic.group);
-  host.replaceChildren(...state.worlds.map((w) => {
+  host.replaceChildren(...state.worlds.flatMap((w) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'pill';
@@ -92,7 +92,12 @@ function renderTraffic() {
     button.dataset.world = w.id;
     button.setAttribute('aria-pressed', String(w.id === state.world));
     button.addEventListener('click', () => setWorld(w.id));
-    return button;
+    if (!w.crises) return [button];
+    // Un monde à deux crises : une pastille de plus, au nom long, qui commence une nouvelle ligne.
+    const line = document.createElement('span');
+    line.className = 'break';
+    line.setAttribute('aria-hidden', 'true');
+    return [line, button];
   }));
   const shown = world();
   const details = shown.parameters.map((p) => {
@@ -434,17 +439,32 @@ async function boot() {
   // Pour ouvrir directement un trajet, un monde, une gare ou une station :
   // ?trajet=master&monde=chomage_6_mois&gare=12   ou   ?trajet=berlin&station=logement
   // ?monde=krach@25 : le krach déplacé à 25 ans. Le moteur décrit le monde déplacé ; s'il refuse l'âge, la crise garde le sien.
-  const [askedWorld, askedAge] = (params.get('monde') ?? '').split('@');
-  if (askedAge && state.worlds.some((w) => w.type === askedWorld && w.adjustable)) {
+  // ?monde=krach@24+chomage_long@25 : deux crises dans le même monde. Dans une adresse, le « + » arrive comme un espace.
+  // Le moteur décrit ce monde, qui devient une pastille de plus, sans réglage d'âge. S'il le refuse, la page s'ouvre sans lui
+  // et garde le refus affiché.
+  const askedMonde = (params.get('monde') ?? '').trim().replace(/\s*\+\s*|\s+/g, '+');
+  const [askedWorld, askedAge] = askedMonde.split('@');
+  let refusal = null;
+  if (askedMonde.includes('+')) {
     try {
-      state.worlds = await fetchWorlds(state.worlds.map((w) => (w.type === askedWorld ? `${askedWorld}@${askedAge}` : w.id)));
+      state.worlds = await fetchWorlds([...state.worlds.map((w) => w.id), askedMonde]);
       setWorlds(state.worlds.map((w) => w.id));
+      state.world = state.worlds.at(-1).id;
     } catch (error) {
-      fail(error);
+      refusal = error;
     }
+  } else {
+    if (askedAge && state.worlds.some((w) => w.type === askedWorld && w.adjustable)) {
+      try {
+        state.worlds = await fetchWorlds(state.worlds.map((w) => (w.type === askedWorld ? `${askedWorld}@${askedAge}` : w.id)));
+        setWorlds(state.worlds.map((w) => w.id));
+      } catch (error) {
+        fail(error);
+      }
+    }
+    const shownFirst = state.worlds.find((w) => w.type === askedWorld);
+    if (shownFirst) state.world = shownFirst.id;
   }
-  const shownFirst = state.worlds.find((w) => w.type === askedWorld);
-  if (shownFirst) state.world = shownFirst.id;
   // ?hyp=taxe_semestre:580,loyer:1000 : des hypothèses modifiées dès l'ouverture, comme si on les avait saisies dans le tiroir.
   for (const pair of (params.get('hyp') ?? '').split(',').filter(Boolean)) {
     const [key, value] = pair.split(':');
@@ -486,6 +506,7 @@ async function boot() {
   if (params.has('regle')) await openFolk();                // ?regle=1 : la règle répandue, à l'épreuve
   if (params.has('tiroir')) await openDrawer(params.get('tiroir') || 'hypotheses');      // ?tiroir=registre
   if (state.trip.doors.some((d) => d.key === params.get('station'))) selectStation(params.get('station'));
+  if (refusal) fail(refusal);
   await document.fonts?.ready;
   document.body.dataset.ready = '1';
   if (params.has('metro')) toggleTrain();

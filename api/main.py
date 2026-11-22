@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import sys
 import time
 import unittest
@@ -217,7 +218,8 @@ class TripIn(BaseModel):
     """Un trajet : une suite de blocs qui couvre la période. `mondes` : les mondes nommés à tester (tous par défaut)."""
     scenario_id: str = "alexia"
     path: list[dict] = Field(default_factory=list)
-    # Les mondes à tester : des noms (« krach », « krach@25 ») ou des crises { "type": "krach", "age": 25 }.
+    # Les mondes à tester : des noms (« krach », « krach@25 »), des crises { "type": "krach", "age": 25 }, ou deux crises
+    # dans le même monde (« krach@24+chomage_long@25 »).
     mondes: list[str | dict] | dict | None = None
     assumptions: dict[str, float] = Field(default_factory=dict)
     # Le jumeau qui apprend : ce qu'Alexia a vraiment de côté à une gare, { "gare_month": 72, "value_chf": 40000 }.
@@ -234,9 +236,11 @@ class NodeIn(TripIn):
 
 @app.get("/worlds")
 def get_worlds(scenario_id: str = "alexia", mondes: str | None = None):
-    """`mondes` : les mondes à décrire, séparés par des virgules, avec l'âge choisi pour une crise (« krach@25 »)."""
+    """`mondes` : les mondes à décrire, séparés par des virgules, avec l'âge choisi pour une crise (« krach@25 »).
+    Deux crises dans le même monde s'écrivent « krach@24+chomage_long@25 » : dans une adresse, un « + » arrive comme
+    un espace, et il est relu ici comme un « + »."""
     sc = _scenario(scenario_id)
-    chosen = [m for m in mondes.split(",") if m] if mondes else None
+    chosen = [re.sub(r"\s*\+\s*|\s+", "+", m.strip()) for m in mondes.split(",") if m.strip()] if mondes else None
     return _guard(named_worlds.describe, theta_for(sc), sc.horizon_months, sc.profile.age, chosen)
 
 

@@ -142,10 +142,15 @@ export function renderGareCard(card, { node, trip, pathways, worlds, world, prof
     + flex.robust.map(() => '<i class="robust"></i>').join('') + flex.possible.map(() => '<i class="possible"></i>').join('')
     + lost.map(() => '<i class="lost"></i>').join('') + '</div>';
   // Où en sont les crises testées à cet âge : après le choc, l'état de la gare en porte déjà la trace.
-  const crises = worlds.filter((w) => node.state_by_world[w.id]?.avant_le_choc != null);
+  const crises = worlds.filter((w) => node.state_by_world[w.id]?.avant_le_choc != null && !node.state_by_world[w.id].crises);
   const after = crises.filter((w) => node.state_by_world[w.id].avant_le_choc === false).map((w) => w.name);
   const before = crises.filter((w) => node.state_by_world[w.id].avant_le_choc === true).map((w) => w.name);
   if (crises.length) html += p(T.card.shocks(node.age, after, before), 'small');
+  // Un monde à deux crises : où en est chacune à cet âge (déjà eu lieu, en cours, à venir), tel que le moteur le dit.
+  for (const w of worlds) {
+    const each = node.state_by_world[w.id]?.crises;
+    if (each) html += p(T.card.combined(node.age, each), 'small');
+  }
   // Les signaux à surveiller à cette gare, pour le trajet en cours et dans le monde affiché.
   for (const row of pathways?.by_world[world.id]?.doors ?? []) {
     if (row.signpost && row.signpost.gare_month === node.gare_month) {

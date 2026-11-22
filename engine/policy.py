@@ -309,6 +309,11 @@ def view(tree: Tree, path: list[dict], overrides: dict | None = None, mondes=Non
     Deux fois : pour Alexia, et pour Alexia fragile. La politique est la même, avec les mêmes seuils : seul l'état change."""
     th = tree.theta(overrides)
     worlds = W.asked(mondes if mondes is not None else TABLE_WORLDS, th, tree.h, tree.age0)
+    for world in worlds:
+        # Les variantes de test du tableau déplacent et dosent une crise à la fois : un monde combiné n'y entre pas.
+        if W.combined(world):
+            raise ValueError(say(f"The value table keeps one crisis per world: “{world}” combines two.",
+                                 f"Le tableau de valeur garde une crise par monde : « {world} » en combine deux."))
     key = (json.dumps(path, sort_keys=True), json.dumps(overrides or {}, sort_keys=True), worlds, i18n.current())
     cache = tree.__dict__.setdefault("_policy_views", {})
     if key in cache:

@@ -80,6 +80,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--text); outline-
 .pills { display: contents; }
 /* Sept mondes sur une ligne : les boutons d'« Info trafic » sont un peu plus serrés que les autres. */
 #worlds .pill { min-height: 40px; padding: 0 12px; font-size: 14.5px; white-space: nowrap; }
+/* Un monde à deux crises, donné dans l'adresse : une pastille de plus, qui commence une nouvelle ligne. */
+#worlds .break { flex-basis: 100%; height: 0; }
+#worlds .break + .pill { margin-top: -10px; }       /* la ligne vide du saut compte un écart de trop */
 .traffic-note { margin: 0; font-size: 13.5px; line-height: 1.35; color: var(--text-3); }
 .traffic-note:empty { display: none; }
 /* L'âge de la crise affichée : un an plus tôt, un an plus tard. */
@@ -151,6 +154,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--text); outline-
 .route { left: 24px; top: 16px; max-width: 430px; }
 .route h1 { margin: 0; font-family: var(--title); font-size: 28px; font-weight: 700; line-height: 1.08; }
 .route p { margin: 6px 0 0; font-size: 15px; color: var(--text-2); }
+/* Un monde à deux crises a un nom long : il tient sur une ligne, coupé s'il le faut. Son nom entier est sur sa pastille. */
+.route p.one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .route .tunnel-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--text-3); font-size: 14px; }
 /* « Ne jamais passer dans le rouge » : un indicateur près du titre, avec le tunnel. */
 .indicator {

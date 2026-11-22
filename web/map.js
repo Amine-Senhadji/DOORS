@@ -231,7 +231,7 @@ export function renderMap({ svg, labels, profile, months, trip, pathways, branch
     + `aria-pressed="${isStation(door.key)}" aria-label="${escapeHtml(T.map.station(door.name, T.wholeTrip, T.states[light(door.key)]))}">`
     + `<i></i>${escapeHtml(door.name)}</button>`).join('');
   const route = add('div', 'route', `<h1>${escapeHtml(names)}</h1>`
-    + `<p>${escapeHtml(T.map.counts(shown.doors_open, shown.doors_total, world.name))}</p>`
+    + `<p${world.crises ? ' class="one-line"' : ''}>${escapeHtml(T.map.counts(shown.doors_open, shown.doors_total, world.name))}</p>`
     + `<p class="tunnel-line num">${indicators}<span>${escapeHtml(tunnelLine)}</span></p>`, 24, 16);
   route.querySelectorAll('.indicator').forEach((button) => button.addEventListener('click', () => onStation(button.dataset.station)));
 

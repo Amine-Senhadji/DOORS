@@ -108,7 +108,8 @@ class Tree:
         return theta_for(self.sc, overrides)
 
     def asked(self, mondes, overrides: dict | None) -> tuple[str, ...]:
-        """Les mondes à tester, sous leur identifiant : « krach », ou « krach@25 » pour un krach déplacé à 25 ans."""
+        """Les mondes à tester, sous leur identifiant : « krach », « krach@25 » pour un krach déplacé à 25 ans, ou
+        « krach@24+chomage_long@25 » pour deux crises dans le même monde."""
         return W.asked(mondes, self.theta(overrides), self.h, self.age0)
 
     def world(self, th: dict, world_id: str):
@@ -400,6 +401,8 @@ class Tree:
 
         # L'état à la gare, dans chaque monde. `avant_le_choc` : la crise de ce monde n'a pas encore commencé à cet âge
         # (None pour le monde de référence). Après le choc, l'état de la gare porte déjà sa trace.
+        # Un monde combiné a deux crises : `avant_le_choc` dit qu'aucune n'a commencé, et `crises` dit où en est chacune
+        # (à venir, en cours, passée). L'état d'une gare est celui du début du mois : une crise qui commence ce mois-là est à venir.
         if path and gare_month:
             state = {w: self._state(self.lived(path, w, overrides, obs)[1][gare_month]) for w in tested}
         else:
@@ -408,6 +411,10 @@ class Tree:
             start = W.shock_start(th, w, self.h, self.age0)
             state[w]["avant_le_choc"] = None if start is None else gare_month <= start
             state[w]["choc_month"], state[w]["choc_age"] = start, None if start is None else self.age(start)
+            if W.combined(w):
+                state[w]["crises"] = [{**crisis, "status": "a_venir" if gare_month <= crisis["from_month"]
+                                       else "en_cours" if gare_month < crisis["to_month"] else "passee"}
+                                      for crisis in W.crises(th, w, self.h, self.age0)]
 
         # Flexibilité : une des branches d'ici, ou le trajet suivi avec un seul changement à une gare suivante.
         reachable = [b["by_world"] for b in open_branches]

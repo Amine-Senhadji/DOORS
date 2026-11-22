@@ -133,6 +133,9 @@ export const T = {
       after.length ? `At ${age}, ${after.length > 1 ? 'these tested crises have' : 'this tested crisis has'} already happened: ${list(after.map(lower))}.` : '',
       before.length ? `${after.length ? 'Not yet' : `At ${age}, no tested crisis has happened yet. Still to come`}: ${list(before.map(lower))}.` : '',
     ].filter(Boolean).join(' '),
+    // A world with two crises: where each of them stands at this junction, as the engine says it.
+    crisisStatus: { passee: 'already happened', en_cours: 'in progress', a_venir: 'still to come' },
+    combined: (age, crises) => `World with two crises, at ${age}: ${list(crises.map((c) => `${lower(c.name)} (${T.card.crisisStatus[c.status]})`))}.`,
     // The twin that learns: Alexia says what she really has set aside at this junction.
     observe: {
       ask: 'How much do you really have set aside?',

@@ -135,6 +135,9 @@ export const T = {
       after.length ? `À ${age} ans, ${after.length > 1 ? 'ces crises testées ont' : 'cette crise testée a'} déjà eu lieu : ${list(after.map(lower))}.` : '',
       before.length ? `${after.length ? 'Pas encore' : `À ${age} ans, aucune crise testée n’a encore eu lieu. À venir`} : ${list(before.map(lower))}.` : '',
     ].filter(Boolean).join(' '),
+    // Un monde à deux crises : où en est chacune à cette gare, tel que le moteur le dit.
+    crisisStatus: { passee: 'déjà eu lieu', en_cours: 'en cours', a_venir: 'à venir' },
+    combined: (age, crises) => `Monde à deux crises, à ${age} ans : ${list(crises.map((c) => `${lower(c.name)} (${T.card.crisisStatus[c.status]})`))}.`,
     // Le jumeau qui apprend : Alexia dit ce qu'elle a vraiment de côté à cette gare.
     observe: {
       ask: 'Combien as-tu vraiment de côté ?',
