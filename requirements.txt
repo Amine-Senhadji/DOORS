@@ -1,0 +1,7 @@
+# Le moteur (engine/) n'utilise que la bibliothèque standard Python.
+# Ces dépendances servent à l'API (api/), au service de l'interface (web/) et aux tests.
+# Versions de la machine de démo, sur lesquelles toute la suite de tests passe.
+fastapi==0.165.0
+uvicorn==0.54.0
+httpx==0.28.1
+pytest==9.2.0

@@ -1,0 +1,18 @@
+Doors
+=====
+
+Built for the UBS AI Financial Twin Challenge (LauzHack 2026). An independent project: see DISCLAIMER.md.
+
+Challenge material, included unchanged
+--------------------------------------
+The synthetic data in `Data/` and the starter kit in `starter-kit/` were produced by [Nom] ([lien LinkedIn]),
+challenge author and information owner. They are included with her permission. They are not covered by the
+licence of this project's own code, and they are not ours to relicense.
+
+A few figures of the fictional persona (savings, rent, goals) and of the starter kit (salaries, expenses) are
+quoted in `engine/assumptions.py` and `engine/scenarios/alexia.json`, each with its source file.
+
+Fonts
+-----
+Barlow and Barlow Condensed, in `web/vendor/barlow/`, are distributed under the SIL Open Font License 1.1.
+See `web/vendor/barlow/LICENSE` and `web/vendor/barlow/LICENSE-condensed`.

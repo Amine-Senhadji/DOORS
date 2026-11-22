@@ -1,0 +1,56 @@
+{
+  "profile": {
+    "id": "P00001",
+    "name": "Alexia",
+    "age": 20,
+    "city": "Lausanne",
+    "canton": "VD",
+    "cash_chf": 8000,
+    "observed_monthly_income_chf": 1200,
+    "observed_monthly_rent_chf": 900
+  },
+  "horizon_months": 120,
+  "lines": [
+    {
+      "id": "travailler",
+      "name": "Travailler",
+      "operations": [
+        {"kind": "travailler", "start": 0, "end": 120, "params": {"salaire_brut_mensuel": "$salaire_sans_master", "depenses_mensuelles": "$depenses_emploi_sans_master"}}
+      ]
+    },
+    {
+      "id": "master",
+      "name": "Master",
+      "operations": [
+        {"kind": "etudier", "start": 0, "end": 24, "params": {"job_net_mensuel": "$job_net_mensuel", "taxe_semestre": "$taxe_semestre"}},
+        {"kind": "chercher_emploi", "start": 24, "end": "24+$recherche_emploi_mois"},
+        {"kind": "travailler", "start": "24+$recherche_emploi_mois", "end": 120, "params": {"salaire_brut_mensuel": "$salaire_apres_master", "depenses_mensuelles": "$depenses_emploi_apres_master"}}
+      ]
+    },
+    {
+      "id": "master_arret_m12",
+      "name": "Arrêter le master au mois 12",
+      "operations": [
+        {"kind": "etudier", "start": 0, "end": 12, "params": {"job_net_mensuel": "$job_net_mensuel", "taxe_semestre": "$taxe_semestre"}},
+        {"kind": "chercher_emploi", "start": 12, "end": "12+$recherche_apres_arret_mois"},
+        {"kind": "travailler", "start": "12+$recherche_apres_arret_mois", "end": 120, "params": {"salaire_brut_mensuel": "$salaire_sans_master", "depenses_mensuelles": "$depenses_emploi_sans_master"}}
+      ]
+    },
+    {
+      "id": "etranger",
+      "name": "Étranger",
+      "operations": [
+        {"kind": "demenager", "start": 0, "end": 1, "params": {"lieu": "etranger", "cout_chf": "$cout_demenagement"}},
+        {"kind": "travailler", "start": 0, "end": 120, "params": {"salaire_brut_mensuel": "$salaire_etranger_eur", "devise": "EUR"}}
+      ]
+    }
+  ],
+  "stations": [
+    {"id": "depart", "month": 0, "question": "Master ou travailler tout de suite ?",
+     "options": ["master", "travailler"], "axes": ["job_net_mensuel", "salaire_apres_master"]},
+    {"id": "m12_master", "month": 12, "question": "Continuer le master ou arrêter ?",
+     "options": ["master", "master_arret_m12"], "axes": ["recherche_emploi_mois", "salaire_apres_master"]}
+  ],
+  "default_path": [{"block": "job", "years": 5}, {"block": "master", "years": 2}, {"block": "job", "years": 3}],
+  "assumption_overrides": {}
+}

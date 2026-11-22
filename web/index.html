@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Doors</title>
+  <link rel="preload" href="./vendor/barlow/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./vendor/barlow/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand" id="brand"></div>
+    <p class="who" id="who"></p>
+    <p class="banner" id="banner"></p>
+    <button type="button" class="pill" id="drawer-open"></button>
+  </header>
+
+  <section class="trip" aria-labelledby="trip-title">
+    <div class="trip-row">
+      <h2 id="trip-title"></h2>
+      <ol class="chips" id="chips"></ol>
+    </div>
+    <div class="trip-row">
+      <h2 id="traffic-title"></h2>
+      <div class="pills" id="worlds" role="group"></div>
+    </div>
+    <div class="trip-row traffic-detail">
+      <div class="crisis num" id="traffic-age"></div>
+      <p class="traffic-note num" id="traffic-note"></p>
+    </div>
+  </section>
+
+  <main class="board">
+    <div class="map" id="map">
+      <div class="actions">
+        <button type="button" class="pill" id="policies"></button>
+        <button type="button" class="pill" id="plan"></button>
+        <button type="button" class="pill" id="train"></button>
+      </div>
+      <div class="stage" id="stage">
+        <svg id="tracks" viewBox="0 0 980 520" aria-hidden="true"></svg>
+        <div class="labels" id="labels"></div>
+      </div>
+    </div>
+    <aside class="side"><div class="card" id="card" aria-live="polite"></div></aside>
+  </main>
+
+  <footer class="legend" id="legend"></footer>
+  <p class="status" id="status" role="status"></p>
+  <aside class="drawer" id="drawer" hidden></aside>
+  <dialog class="sheet wide" id="policies-sheet"></dialog>
+  <dialog class="sheet wide" id="folk-sheet"></dialog>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
