@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from urllib.parse import parse_qs
 
+from ai import service as ai_service
 from engine import folk, i18n
 from engine import policy as policies
 from engine import worlds as named_worlds
@@ -287,9 +288,49 @@ def post_folk_rule(req: TripIn):
     return _guard(folk.view, _tree(req.scenario_id), path, req.assumptions)
 
 
-@app.post("/ask")
-def post_ask():
-    raise HTTPException(501, say("The AI desk is not connected.", "Le guichet IA n'est pas encore branché."))
+# ----------------------------------------------------------------- la couche d'IA : elle propose et écrit, le moteur tranche
+class AiIn(BaseModel):
+    """Ce sur quoi porte une demande à la couche d'IA : le trajet et les hypothèses à l'écran. Sans trajet : celui de la démo."""
+    scenario_id: str = "alexia"
+    path: list[dict] = Field(default_factory=list)
+    assumptions: dict[str, float] = Field(default_factory=dict)
+
+
+class AskIn(AiIn):
+    """Une phrase d'Alexia. Sa longueur utile est limitée par ai/ask.py, avec une phrase claire ; ici, seulement un garde-fou."""
+    sentence: str = Field("", max_length=4000)
+
+
+def _refused(fn, *args):
+    """Un trajet que le moteur refuse est refusé avec sa raison. Toute autre erreur reste une erreur : elle n'est pas maquillée."""
+    try:
+        return fn(*args)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@app.get("/ai/status")
+def get_ai_status(scenario_id: str = "alexia"):
+    """Le mode de la couche d'IA (en direct ou enregistré), le modèle, les limites, et ce qui est enregistré pour ce
+    scénario. La clé n'apparaît jamais : seule sa présence décide du mode."""
+    _scenario(scenario_id)
+    return ai_service.status(scenario_id)
+
+
+@app.post("/ai/stress")
+def post_ai_stress(req: AiIn):
+    """« Find what breaks my plan » : le modèle propose des mondes, le moteur les simule, les classe et vérifie chaque
+    chiffre des explications. En mode enregistré : la réponse enregistrée pour ce trajet, rejouée sur le moteur."""
+    path = req.path or default_path(req.scenario_id)
+    return _refused(ai_service.stress, _tree(req.scenario_id), path, req.assumptions, i18n.current(), req.scenario_id)
+
+
+@app.post("/ai/ask")
+def post_ai_ask(req: AskIn):
+    """« Ask in your own words » : une phrase lue en réglages de Doors, que le moteur contrôle. Rien n'est calculé ici :
+    la fiche rendue est montrée à Alexia, qui décide."""
+    path = req.path or default_path(req.scenario_id)
+    return _refused(ai_service.ask, _tree(req.scenario_id), req.sentence, path, req.assumptions, i18n.current(), req.scenario_id)
 
 
 # --- Interface (web/) : la page est servie par ce même serveur.

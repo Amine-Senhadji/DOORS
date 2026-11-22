@@ -264,7 +264,8 @@ def search(route: Route, model: Model) -> dict:
             if reply.stop_reason == "refusal":                           # read before anything else of the answer
                 stopped = "refusal"
                 break
-            messages.append({"role": "assistant", "content": list(reply.content)})
+            if reply.content:                                            # an answer with nothing in it is not a turn of the conversation
+                messages.append({"role": "assistant", "content": list(reply.content)})
             asked = reply.tool_calls()
             if not asked:
                 if calls or reminded:
@@ -431,10 +432,10 @@ def explain(route: Route, model: Model, ranked: list[dict], lang: str) -> tuple[
                 messages.append({"role": "user", "content": "\n".join(again).strip()})
             reply = model.reply(system=system, messages=messages, tools=[], output=_schema(worlds), effort="medium")
             usage.update({key: value for key, value in reply.usage.items() if isinstance(value, (int, float))})
-            if reply.stop_reason == "refusal":
-                messages.append({"role": "assistant", "content": [{"type": "text", "text": ""}]})
+            if reply.stop_reason == "refusal":                           # nothing of a declined answer goes into the conversation
                 return {}
-            messages.append({"role": "assistant", "content": list(reply.content)})
+            if reply.content:
+                messages.append({"role": "assistant", "content": list(reply.content)})
             try:
                 written = json.loads(reply.text())["explanations"]
                 return {item["world"]: item["text"] for item in written if isinstance(item.get("text"), str)}

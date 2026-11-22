@@ -6,6 +6,8 @@ Lancer depuis la racine du dépôt :
 """
 from __future__ import annotations
 
+import offline  # noqa: F401  le mode enregistré, et aucun client du SDK : avant toute autre chose
+
 from engine import i18n
 
 i18n.set_default("fr")      # ces tests attendent les phrases du moteur en français ; l'anglais est testé dans tests/test_english.py

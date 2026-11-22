@@ -6,7 +6,9 @@ Berlin. The agent has 40 simulations. Three things are measured over several run
 world or one as hard, how many simulations it used, and how far the severity of what it found is from the mildest
 of the hardest worlds. Random search with the same budget is the yardstick.
 
-Nothing here calls a model: `play` takes whatever model it is given, and the tests give it a script.
+Nothing here chooses a model: `play` and `run_once` take whatever model they are given, and the tests give them a
+script. With the live model, a run is a whole stress test: the search is measured against the true answer, and each
+explanation says how many times the model had to write it again before the checker accepted it.
 """
 from __future__ import annotations
 
@@ -18,9 +20,11 @@ from collections import Counter
 from pathlib import Path
 from typing import Callable, Iterable
 
+from ai import recordings
 from ai import vocabulary as V
-from ai.model import Model
-from ai.stress import CALLS, PER_CALL, Route, harder, rank, search
+from ai.cost import cost
+from ai.model import Model, Recorder
+from ai.stress import CALLS, PER_CALL, Route, harder, rank, run, search
 from engine.blocks import normalize
 from engine.simulate import load_scenario
 from engine.tree import Tree
@@ -35,6 +39,8 @@ ROUTES = {
 }
 LISTED = 40                 # how many of the hardest worlds are written in the file, mildest first
 SEED, REPETITIONS = 2026, 1000
+AGENT = ROOT / "benchmarks" / "agent.json"         # the runs of the agent with the live model
+LANGUAGES = ("en", "fr")    # the explanations of a run are in one language: English for even runs, French for odd ones
 
 
 def route_of(key: str) -> Route:
@@ -138,3 +144,71 @@ def random_search(truth: dict, budget: int = CALLS * PER_CALL, repetitions: int 
             "share_found": best_drawn[most] / repetitions if most else 0.0,
             "exact_share": 1 - math.comb(space - hardest, budget) / math.comb(space, budget),
             "best_goals_lost": {str(lost): best_drawn[lost] for lost in sorted(best_drawn)}}
+
+
+# ------------------------------------------------------------------------------------ whole runs, with any model
+def language_of(number: int) -> str:
+    return LANGUAGES[number % len(LANGUAGES)]
+
+
+def run_once(key: str, number: int, model: Model, truth: dict | None = None) -> dict:
+    """One whole stress test of a route of the benchmark, measured. The search is held against the true answer; each
+    explanation says how many attempts it took, so how many times the model wrote it again. The texts kept are the
+    ones the checker accepted: a refused text is never kept."""
+    truth = truth if truth is not None else load()["routes"][key]
+    lang, started, recorder = language_of(number), time.perf_counter(), Recorder(model)
+    result = run(Tree(load_scenario(SCENARIO)), ROUTES[key], recorder, None, lang, truth_for(ROUTES[key]))
+    found = {"tested": {summary["world"]: summary for summary in result["tested"]}, "calls": result["calls"],
+             "stopped": result["stopped"], "usage": result["usage"]}
+    priced = [cost(turn["reply"]["usage"], turn["reply"].get("model") or model.name) for turn in recorder.turns]
+    return {"route": key, "run": number, "language": lang, "model": model.name,
+            "served_by": sorted({turn["reply"]["model"] for turn in recorder.turns if turn["reply"].get("model")}),
+            **measure(found, truth),
+            "calls": [{name: call[name] for name in ("call", "asked", "tested", "already_tested", "refused", "not_tested")} for call in result["calls"]],
+            "tested": [{"world": summary["world"], "goals_lost": len(summary["goals_lost"]), "severity": summary["severity"], "call": summary.get("call")}
+                       for summary in result["tested"]],
+            "explanations": [{"world": world["world"], "accepted": world["explanation"]["accepted"], "attempts": world["explanation"]["attempts"],
+                              "rewrites": world["explanation"]["attempts"] - 1, "refusals": world["explanation"]["refusals"],
+                              "verified": world["explanation"]["verified"], "text": world["explanation"]["text"]} for world in result["ranking"]],
+            "requests": len(recorder.turns), "seconds": round(time.perf_counter() - started, 1),
+            "cost_usd": None if any(price is None for price in priced) else round(sum(priced), 6)}
+
+
+def live_run(job: tuple[str, int, bool]) -> dict:
+    """One run with the live model, in a process of its own: (route, number, fallback). Whatever stops it is returned
+    as what happened, not raised, so that the other runs go on and this one can be run again."""
+    key, number, fallback = job
+    from ai.model import Live
+    try:
+        return run_once(key, number, Live(fallback=fallback))
+    except Exception as error:
+        return {"route": key, "run": number, "language": language_of(number), "error": recordings.describe(error)}
+
+
+def rewrites(explained: list[dict]) -> dict:
+    """How the explanations went: how many the checker accepted in the end, and after how many rewrites."""
+    counted = Counter(explanation["rewrites"] for explanation in explained if explanation["accepted"])
+    accepted = sum(counted.values())
+    return {"count": len(explained), "accepted": accepted, "rejected": len(explained) - accepted,
+            "accepted_after_rewrites": {str(rewrites): counted[rewrites] for rewrites in sorted(counted)},
+            "mean_rewrites_when_accepted": sum(rewrites * count for rewrites, count in counted.items()) / accepted if accepted else None}
+
+
+def summary(key: str, runs: list[dict], truth: dict | None = None) -> dict:
+    """The runs of one route as measures: how often the search found one of the hardest worlds, with how many
+    simulations, how far in severity from the mildest of them, and how the explanations went, in each language."""
+    truth = truth if truth is not None else load()["routes"][key]
+    done = [each for each in runs if "error" not in each]
+    found, gaps = sum(each["found"] for each in done), [each["severity_gap"] for each in done if each["found"]]
+    best = Counter(each["goals_lost"] for each in done)
+    priced = [each["cost_usd"] for each in done]
+    explained = lambda lang=None: [explanation for each in done if lang in (None, each["language"]) for explanation in each["explanations"]]
+    return {"route": key, "runs": len(done), "failed": len(runs) - len(done), "found": found, "share_found": found / len(done) if done else None,
+            "budget": CALLS * PER_CALL, "space": truth["worlds"], "max_goals_lost": truth["max_goals_lost"],
+            "best_goals_lost": {str(lost): best[lost] for lost in sorted(best, reverse=True)},
+            "mean_worlds_tested": sum(each["worlds_tested"] for each in done) / len(done) if done else None,
+            "share_of_space_tested": sum(each["worlds_tested"] for each in done) / len(done) / truth["worlds"] if done else None,
+            "mean_severity_gap": sum(gaps) / len(gaps) if gaps else None,
+            "explanations": {**rewrites(explained()), "by_language": {lang: rewrites(explained(lang)) for lang in LANGUAGES}},
+            "requests": sum(each["requests"] for each in done), "seconds": round(sum(each["seconds"] for each in done), 1),
+            "cost_usd": None if any(price is None for price in priced) else round(sum(priced), 6)}

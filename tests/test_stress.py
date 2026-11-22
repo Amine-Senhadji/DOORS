@@ -5,6 +5,8 @@ signposts are the engine's, computed again here without the stress test.
 """
 from __future__ import annotations
 
+import offline  # noqa: F401  the recorded mode, and no client of the SDK: before anything else
+
 import ast
 import json
 import unittest
@@ -417,18 +419,27 @@ class TheExplanations(unittest.TestCase):
 
 
 class TheModules(unittest.TestCase):
-    def test_no_module_of_the_ai_layer_opens_a_connection_yet(self):
-        """Until a key is there, nothing in ai/ imports a client of any kind: the tests cannot reach a model by accident."""
-        forbidden = {"anthropic", "openai", "httpx", "requests", "urllib", "http", "socket", "ssl", "aiohttp", "subprocess"}
-        for file in sorted((ROOT / "ai").glob("*.py")) + [ROOT / "scripts/benchmark_agent.py"]:
-            imported = set()
-            for node in ast.walk(ast.parse(file.read_text(encoding="utf-8"))):
-                if isinstance(node, ast.Import):
-                    imported |= {alias.name.split(".")[0] for alias in node.names}
-                elif isinstance(node, ast.ImportFrom) and node.module:
-                    imported.add(node.module.split(".")[0])
+    def test_the_sdk_is_loaded_in_one_function_and_nothing_else_opens_a_connection(self):
+        """The SDK is imported in one place: inside `build_client` of ai/model.py, the function the tests forbid. Nothing
+        else in ai/ or in the scripts imports a client of any kind, so no test can reach a model by accident."""
+        forbidden = {"anthropic", "openai", "httpx", "httpx2", "requests", "urllib", "http", "socket", "ssl", "aiohttp", "subprocess"}
+
+        def imports(node, inside=None) -> set:
+            found = set()
+            for child in ast.iter_child_nodes(node):
+                if isinstance(child, ast.Import):
+                    found |= {(alias.name.split(".")[0], inside) for alias in child.names}
+                elif isinstance(child, ast.ImportFrom) and child.module:
+                    found.add((child.module.split(".")[0], inside))
+                found |= imports(child, child.name if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) else inside)
+            return found
+
+        files = sorted((ROOT / "ai").glob("*.py")) + sorted((ROOT / "scripts").glob("*.py"))
+        self.assertGreater(len(files), 9)
+        for file in files:
+            found = {(name, where) for name, where in imports(ast.parse(file.read_text(encoding="utf-8"))) if name in forbidden}
             with self.subTest(file=file.name):
-                self.assertEqual(imported & forbidden, set())
+                self.assertEqual(found, {("anthropic", "build_client")} if file.name == "model.py" else set())
 
 
 if __name__ == "__main__":

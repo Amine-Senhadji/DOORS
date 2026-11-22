@@ -6,6 +6,8 @@ done by hand, and they check what is kept against the engine as it is today. No 
 """
 from __future__ import annotations
 
+import offline  # noqa: F401  the recorded mode, and no client of the SDK: before anything else
+
 import json
 import math
 import unittest

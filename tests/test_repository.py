@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unittest
+from importlib import metadata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +33,8 @@ TEXT = {".py", ".js", ".css", ".html", ".md", ".json", ".txt", ".ini", ".yml", "
 # Le nom de la banque n'apparaît que dans le nom du défi, et dans la phrase qui dit que le projet n'y est pas lié.
 ALLOWED = ("UBS AI Financial Twin Challenge", "not affiliated with, endorsed by, or reviewed by UBS")
 BANK = re.compile(r"\bU" r"BS\b", re.IGNORECASE)
+# La forme d'une clé de l'API, écrite en deux morceaux pour que ce fichier n'en contienne pas une lui-même.
+KEY = re.compile("sk-" + r"ant-[A-Za-z0-9_\-]{12,}")
 LOCAL = re.compile(r"/Us" r"ers/|/ho" r"me/[a-z]|[\w.+-]+@(?!users\.noreply\.github\.com|anthropic\.com)[\w-]+\.(?:com|ch|org|fr|net)\b")
 
 
@@ -72,6 +75,33 @@ class Repository(unittest.TestCase):
         for file in ours():
             with self.subTest(file=str(file.relative_to(ROOT))):
                 self.assertIsNone(LOCAL.search(file.read_text(encoding="utf-8")))
+
+
+class TheKeyAndTheSdk(unittest.TestCase):
+    def test_no_file_holds_anything_shaped_like_a_key(self):
+        """La clé de l'API n'est lue que dans l'environnement, par le SDK. Aucun fichier du dossier n'en contient une,
+        suivi par git ou non : ni le code, ni les réponses enregistrées, ni le journal des commandes en direct."""
+        skipped = {".git", ".venv", "__pycache__", ".pytest_cache", "node_modules"}
+        files = [f for f in ROOT.rglob("*") if f.is_file() and not skipped & set(f.relative_to(ROOT).parts) and f.stat().st_size < 20_000_000]
+        self.assertGreater(len(files), 100)
+        for file in files:
+            with self.subTest(file=str(file.relative_to(ROOT))):
+                self.assertIsNone(KEY.search(file.read_text(encoding="utf-8", errors="ignore")))
+        self.assertIsNotNone(KEY.search("sk-" + "ant-" + "api03-" + "x" * 40))          # le motif reconnaît bien la forme d'une clé
+
+    def test_every_dependency_is_pinned_and_the_sdk_installed_is_the_one_pinned(self):
+        lines = [line for line in (ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines() if line and not line.startswith("#")]
+        pinned = dict(line.split("==") for line in lines)                               # une ligne sans « == » ferait échouer ce test
+        self.assertEqual(sorted(pinned), ["anthropic", "fastapi", "httpx", "pytest", "uvicorn"])
+        try:
+            self.assertEqual(metadata.version("anthropic"), pinned["anthropic"])
+        except metadata.PackageNotFoundError:  # pragma: no cover
+            self.skipTest("le SDK n'est pas installé : pip install -r requirements.txt")
+
+    def test_what_the_live_commands_write_on_this_machine_is_not_published(self):
+        ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+        for line in (".venv/", ".env", ".env.*", "reports/ai_live.log", "reports/ai_dry_run.*.json"):
+            self.assertIn(line, ignored)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ calls a model: a scripted model returns the form, and what the engine accepts or
 """
 from __future__ import annotations
 
+import offline  # noqa: F401  the recorded mode, and no client of the SDK: before anything else
+
 import json
 import unittest
 from pathlib import Path

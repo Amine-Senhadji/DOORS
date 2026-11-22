@@ -5,3 +5,7 @@ __pycache__/
 .DS_Store
 .env
 .env.*
+# What the live commands and their dry runs write on this machine (scripts/record_ai.py, scripts/benchmark_agent.py).
+reports/ai_live.log
+reports/ai_dry_run.*.json
+benchmarks/*.tmp

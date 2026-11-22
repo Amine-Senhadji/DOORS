@@ -1,6 +1,8 @@
 """Tests de bout en bout de l'API (ignorés si FastAPI n'est pas installé)."""
 from __future__ import annotations
 
+import offline  # noqa: F401  le mode enregistré, et aucun client du SDK : avant toute autre chose
+
 from engine import i18n
 
 i18n.set_default("fr")      # ces tests attendent les phrases du moteur en français ; l'anglais est testé dans tests/test_english.py
@@ -47,7 +49,6 @@ class Api(unittest.TestCase):
         bad_world = self.c.post("/simulate", json={"line_id": "master", "world_id": "crise_2008"})
         self.assertEqual(bad_world.status_code, 400)
         self.assertIn("pas encore disponible", bad_world.json()["detail"])
-        self.assertEqual(self.c.post("/ask").status_code, 501)
 
 
 if __name__ == "__main__":

@@ -407,6 +407,19 @@ def _nothing(sentence: str, lang: str, model: str | None, why: str, usage: dict 
             "settings": {"path": None, "world": None, "assumptions": None, "observation": None}, "usage": usage or {}}
 
 
+def before_reading(sentence, lang: str | None = None) -> dict | None:
+    """A sentence no model needs to read: an empty one, or one that is too long. Returns what the screen is told, or
+    None when the sentence is to be read."""
+    lang = lang or i18n.current()
+    with i18n.use(lang):
+        sentence = " ".join(str(sentence or "").split())
+        if not sentence:
+            return _nothing(sentence, lang, None, say("Write a sentence: what would you like to try?", "Écris une phrase : que veux-tu essayer ?"))
+        if len(sentence) > MAX_LENGTH:
+            return _nothing("", lang, None, say(f"One sentence at a time: {MAX_LENGTH} characters at most.", f"Une phrase à la fois : {MAX_LENGTH} caractères au plus."))
+    return None
+
+
 def ask(tree: Tree, sentence: str, model: Model, path: list[dict] | None = None, overrides: dict | None = None,
         lang: str | None = None) -> dict:
     """Reads one sentence into settings. `path`, `overrides`: the route on screen and the assumptions already changed;
@@ -417,12 +430,11 @@ def ask(tree: Tree, sentence: str, model: Model, path: list[dict] | None = None,
     as it is". `understood`: the sentence gave at least one setting. `changes`: at least one of them differs from what
     is on screen. Nothing is computed."""
     lang, overrides = lang or i18n.current(), dict(overrides or {})
+    refused = before_reading(sentence, lang)
+    if refused is not None:
+        return refused
     with i18n.use(lang):
         sentence = " ".join(str(sentence or "").split())
-        if not sentence:
-            return _nothing(sentence, lang, None, say("Write a sentence: what would you like to try?", "Écris une phrase : que veux-tu essayer ?"))
-        if len(sentence) > MAX_LENGTH:
-            return _nothing("", lang, None, say(f"One sentence at a time: {MAX_LENGTH} characters at most.", f"Une phrase à la fois : {MAX_LENGTH} caractères au plus."))
         base = normalize(path, tree.h) if path else None
         reading = _Reading(tree, sentence, base, overrides)
         engine = {a.key: a for a in ASSUMPTIONS}
