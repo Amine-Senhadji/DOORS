@@ -68,8 +68,12 @@ is not shown. So:
 its sign and its unit: 43'123 CHF, −5'145 CHF, 12 months. Do not round, do not abbreviate, and do not compute a \
 difference, a sum, a ratio or a percentage of your own.
 - Do not write "double", "half", "twice", "a third" or any other ratio.
-- Next to "keep" or "lose", a number of goals must be the number of goals kept or lost in that world. Next to "borrow" \
-or "finance", an amount must be the peak borrowing of that world.
+- Next to "keep", "hold" or "lose", a number of goals must be the number of goals kept or lost in that world. Next to \
+"borrow" or "finance", an amount must be the peak borrowing of that world.
+- The figures of the route with no crisis are not the figures of that world. Never put the number of goals kept with no \
+crisis next to "keep" in the sentence that says what happens in that world. If you want to give it, write it in a sentence \
+of its own that says "with no crisis": "With no crisis the route keeps 3 goals." In French: « Sans crise, le trajet garde \
+3 objectifs. » The same holds for the peak borrowing with no crisis.
 - A sentence given as a quote may be copied word for word, and only word for word.
 - Name a world only by its identifier, as it is given.
 - Never write these words or words of their family: chance, probability, likely, odds, risk, best, recommend, advise, \
@@ -295,8 +299,10 @@ def common_facts(route: Route) -> list[Fact | Quote]:
     states = route.tree.trip(route.path, "reference", route.overrides)[1]
     facts: list[Fact | Quote] = [
         Fact.count(len(goals), say("Goals in all", "Objectifs en tout")),
-        Fact.count(sum(route.calm_goals.values()), say("Goals kept with no crisis", "Objectifs gardés sans crise")),
-        Fact.chf(route.calm.peak_financing_chf, say("Peak borrowing with no crisis", "Emprunt maximal sans crise")),
+        # The figures of the route with no crisis carry their role: they are checked in the sentences that say "with no crisis".
+        Fact.count(sum(route.calm_goals.values()), say("Goals kept with no crisis", "Objectifs gardés sans crise"), None, "kept_calm"),
+        Fact.count(0, say("Goals lost with no crisis", "Objectifs perdus sans crise")),
+        Fact.chf(route.calm.peak_financing_chf, say("Peak borrowing with no crisis", "Emprunt maximal sans crise"), None, "borrowed_calm"),
         Fact.chf(route.calm.net_worth_end_chf, say("Net worth at the end with no crisis", "Patrimoine à la fin sans crise")),
         Fact.age(route.age0, say("Start of the route", "Départ du trajet")),
         Fact.age(route.age0 + route.h // 12, say("End of the route", "Fin du trajet"))]

@@ -238,6 +238,7 @@ class Checking(unittest.TestCase):
         notes = [flow.label for month in hit.months for flow in month.flows if flow.label.startswith("Pas d'indemnité de chômage")]
         cls.note, cls.months_without = notes[0], len(notes)
         cls.engine = {"kept": sum(kept.values()), "total": len(kept), "lost": sum(before[k] and not kept[k] for k in kept), "calm": sum(before.values()),
+                      "calm_peak": calm.peak_financing_chf,
                       "peak": hit.peak_financing_chf, "worth": hit.net_worth_end_chf, "aside": margins["reconversion"][0],
                       "asked": margins["reconversion"][1]}
         # What the tests below write by hand is what the engine gives today.
@@ -248,7 +249,8 @@ class Checking(unittest.TestCase):
         e = self.engine
         with i18n.use(lang):
             return [Fact.count(e["kept"], "Goals kept", WORLD, "kept"), Fact.count(e["total"], "Goals in all"),
-                    Fact.count(e["lost"], "Goals lost", WORLD, "lost"), Fact.count(e["calm"], "Goals kept with no shock"),
+                    Fact.count(e["lost"], "Goals lost", WORLD, "lost"), Fact.count(e["calm"], "Goals kept with no crisis", None, "kept_calm"),
+                    Fact.count(0, "Goals lost with no crisis"), Fact.chf(e["calm_peak"], "Peak borrowing with no crisis", None, "borrowed_calm"),
                     Fact.chf(e["peak"], "Peak borrowing", WORLD, "borrowed"), Fact.chf(e["worth"], "Net worth at 30", WORLD),
                     Fact.chf(e["aside"], "Career change: set aside at 28", WORLD), Fact.chf(e["asked"], "Career change: amount asked"),
                     Fact.age(27, "Start of the crisis", WORLD), Fact.age(28, "Career change: age"), Fact.months(12, "Length of the crisis", WORLD),
@@ -387,11 +389,14 @@ class Checking(unittest.TestCase):
         is where it stands."""
         refused_en = {
             "She keeps 2 goals of 6.": ["“2” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She holds 2 goals.": ["“2” stands next to “holds”: the number of goals kept in this world is 1."],
+            "2 goals are held.": ["“2” stands next to “held”: the number of goals kept in this world is 1."],
+            "She is holding no goal.": ["“no” stands next to “holding”: the number of goals kept in this world is 1."],
             "She loses 1 goal and keeps 2.": ["“1” stands next to “loses”: the number of goals lost in this world is 2.",
                                               "“2” stands next to “keeps”: the number of goals kept in this world is 1."],
             "She keeps only 2.": ["“2” stands next to “keeps”: the number of goals kept in this world is 1."],
             "She keeps all 6.": ["“6” stands next to “keeps”: the number of goals kept in this world is 1."],
-            "She kept 3 goals.": ["“3” stands next to “kept”: the number of goals kept in this world is 1."],
+            "She kept 5 goals.": ["“5” stands next to “kept”: the number of goals kept in this world is 1."],
             "2 goals are kept.": ["“2” stands next to “kept”: the number of goals kept in this world is 1."],
             "She keeps no goal.": ["“no” stands next to “keeps”: the number of goals kept in this world is 1."],
             "She keeps none of the 6 goals.": ["“none” stands next to “keeps”: the number of goals kept in this world is 1."],
@@ -408,6 +413,9 @@ class Checking(unittest.TestCase):
                                               "“43'000 CHF” stands next to “borrows”: the peak borrowing of this world is 43'123 CHF."]}
         refused_fr = {
             "Elle garde 2 objectifs sur 6.": ["« 2 » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Elle tient 2 objectifs.": ["« 2 » est à côté de « tient » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "2 objectifs sont tenus.": ["« 2 » est à côté de « tenus » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Tu ne tiens aucun objectif.": ["« aucun » est à côté de « tiens » : le nombre d'objectifs gardés dans ce monde est 1."],
             "Elle garde deux objectifs.": ["« deux » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
             "Elle ne garde aucun objectif.": ["« aucun » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
             "Elle n'en garde aucun.": ["« aucun » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
@@ -426,7 +434,8 @@ class Checking(unittest.TestCase):
                     self.assertEqual([problem.message for problem in report.problems], messages)
                     self.assertEqual({problem.kind for problem in report.problems} - {"approximation"}, {"role"})
         # The same quantities in their place, and the same words with no claim on a number.
-        accepted = {"en": ("She keeps 1 goal of 6.", "She keeps 1 goal of 6 and loses 2.", "She loses 2 goals and keeps 1.", "2 goals are lost, 1 is kept.",
+        accepted = {"en": ("She holds 1 goal of 6.", "1 goal is held and 2 are lost.", "The cushion holds for 12 months.", "It holds until 28.",
+                           "She keeps 1 goal of 6.", "She keeps 1 goal of 6 and loses 2.", "She loses 2 goals and keeps 1.", "2 goals are lost, 1 is kept.",
                            "1 goal kept and 2 lost.", "Only 1 of the 6 goals is kept.", "2 of the 6 goals are lost.", "She keeps a goal.",
                            "She keeps one goal.", "She loses 2 goals and keeps the rest.", "Of the 3 goals she kept with no shock, she loses 2.",
                            "She loses her job at 27 and keeps working until 28.", "She keeps her job for 12 months.", "She loses 12 months of income.",
@@ -435,7 +444,8 @@ class Checking(unittest.TestCase):
                            "She needs 39'366 CHF to finance her career change.", "To finance her career change, she needs 39'366 CHF.",
                            "Her financial position at 28: −5'145 CHF.", "You keep 1 of your 6 goals and lose 2 of them.",
                            "Of your 3 goals you keep one, and you lose 2 goals."),
-                    "fr": ("Elle garde 1 objectif sur 6 et en perd 2.", "Elle ne garde qu'un objectif.", "Elle garde un objectif.",
+                    "fr": ("Tu tiens 1 objectif sur 6.", "Le trajet tient 1 objectif et en perd 2.", "Le coussin tient 12 mois.",
+                           "Elle garde 1 objectif sur 6 et en perd 2.", "Elle ne garde qu'un objectif.", "Elle garde un objectif.",
                            "Elle perd 2 objectifs et en garde 1.", "2 objectifs sont perdus, 1 est gardé.", "Elle perd son emploi à 27 ans.",
                            "Elle perd 12 mois de salaire.", "Elle emprunte jusqu'à 43'123 CHF.", "financement max. 43'123 CHF",
                            "Il lui faut 39'366 CHF pour financer sa reconversion.", "Tu gardes 1 de tes 6 objectifs et tu en perds 2.",
@@ -445,11 +455,65 @@ class Checking(unittest.TestCase):
                 with self.subTest(lang=lang, text=text):
                     report = check(text, self.facts(lang), lang=lang)
                     self.assertTrue(report.ok, report.feedback())
+        # The sentences of the engine that say "this route no longer holds" pass as before, alone or copied as quotes: the
+        # amount and the age they give are not numbers of goals.
+        signs = {"en": ["If you have less than 50'100 CHF set aside (cash + investments − debts) at 26, this route no longer holds “Career change”.",
+                        "With 40'000 CHF set aside at 26, you are below the threshold of 50'100 CHF: that is the side where this route no longer holds "
+                        "“Career change”.",
+                        "With 60'000 CHF set aside at 26, you are above the threshold of 50'100 CHF: that is the side where this route holds “Career change”."],
+                 "fr": ["Si tu as moins de 50'100 CHF de côté (cash + placements − dettes) à 26 ans, ce trajet ne tient plus « Reconversion ».",
+                        "Avec 40'000 CHF de côté à 26 ans, tu es sous le seuil de 50'100 CHF : c'est le côté où ce trajet ne tient plus « Reconversion ».",
+                        "Avec 60'000 CHF de côté à 26 ans, tu es au-dessus du seuil de 50'100 CHF : c'est le côté où ce trajet tient « Reconversion »."]}
+        for lang, sentences in signs.items():
+            for sentence in sentences:
+                with self.subTest(lang=lang, sentence=sentence[:60]):
+                    self.assertTrue(check(sentence, self.facts(lang) + facts_in(sentence, "Signpost of the engine", lang=lang), lang=lang).ok)
+                    self.assertTrue(check(f"The engine says: {sentence}", self.facts(lang) + [Quote(sentence, "Signpost of the engine")], lang=lang).ok)
         # Without a fact that carries the role, nothing can be said about the place of a number: the text passes on presence.
         plain = [Fact.count(1, "Goals kept", WORLD), Fact.count(2, "Goals lost", WORLD)]
         self.assertTrue(check("She keeps 2 goals.", plain, lang="en").ok)
         with self.assertRaises(ValueError):
             Fact.count(1, "Goals kept", WORLD, "held")
+
+    def test_in_a_sentence_that_says_with_no_crisis_the_number_is_the_one_of_the_route_with_no_crisis(self):
+        """With no crisis the route keeps 3 goals and borrows up to 14'234 CHF; in this world, 1 goal and 43'123 CHF. The
+        figures of the route with no crisis have their own sentence, and are checked there."""
+        accepted = {"en": ("With no crisis the route keeps 3.", "With no crisis, the route keeps 3 goals of 6. In this world you keep 1.",
+                           "Without a crisis you hold 3 goals; here you hold 1.", "In the reference world you keep 3 goals.",
+                           "With no crisis you borrow up to 14'234 CHF. Here you borrow up to 43'123 CHF.", "With no crisis you lose no goal.",
+                           "Of the 3 goals she kept with no crisis, she loses 2."),
+                    "fr": ("Sans crise, le trajet garde 3 objectifs. Dans ce monde, tu en gardes 1.", "Sans crise, le trajet tient 3 objectifs sur 6.",
+                           "Sans crise, tu empruntes jusqu'à 14'234 CHF ; ici, tu empruntes jusqu'à 43'123 CHF.",
+                           "Dans le monde de référence, tu gardes 3 objectifs.")}
+        for lang, texts in accepted.items():
+            for text in texts:
+                with self.subTest(lang=lang, text=text):
+                    self.assertTrue(check(text, self.facts(lang), lang=lang).ok, check(text, self.facts(lang), lang=lang).feedback())
+        figures = check("With no crisis the route keeps 3 goals. In this world you keep 1.", self.facts("en"), lang="en").figures
+        self.assertEqual([(figure.text, figure.origins) for figure in figures], [("3", ("Goals kept with no crisis",)), ("1", ("Goals kept",))])
+        refused = {
+            "With no crisis the route keeps 1 goal.":
+                "“1” stands next to “keeps” in a sentence about the route with no crisis: the number of goals kept with no crisis is 3.",
+            "With no crisis you borrow up to 43'123 CHF.":
+                "“43'123 CHF” stands next to “borrow” in a sentence about the route with no crisis: the peak borrowing with no crisis is 14'234 CHF.",
+            # The usual slip, and what the model is told to do about it.
+            "You keep 3 goals of 6.":
+                "“3” stands next to “keep”: the number of goals kept in this world is 1. To give the figure of the route with no crisis, write it in "
+                "a sentence of its own that says “with no crisis”.",
+            "You borrow up to 14'234 CHF.":
+                "“14'234 CHF” stands next to “borrow”: the peak borrowing of this world is 43'123 CHF. To give the figure of the route with no crisis, "
+                "write it in a sentence of its own that says “with no crisis”.",
+            # One sentence for each: said together, the figure of this world stands in a sentence about the route with no crisis.
+            "You keep 1 goal where you would keep 3 with no crisis.":
+                "“1” stands next to “keep” in a sentence about the route with no crisis: the number of goals kept with no crisis is 3."}
+        for text, message in refused.items():
+            with self.subTest(text=text):
+                self.assertEqual([problem.message for problem in check(text, self.facts("en"), lang="en").problems], [message])
+        self.assertEqual([problem.message for problem in check("Tu gardes 3 objectifs.", self.facts("fr"), lang="fr").problems],
+                         ["« 3 » est à côté de « gardes » : le nombre d'objectifs gardés dans ce monde est 1. Pour donner le chiffre du trajet sans crise, "
+                          "écris-le dans une phrase à part qui dit « sans crise »."])
+        self.assertEqual([problem.message for problem in check("Sans crise, tu gardes 1 objectif.", self.facts("fr"), lang="fr").problems],
+                         ["« 1 » est à côté de « gardes » dans une phrase qui parle du trajet sans crise : le nombre d'objectifs gardés sans crise est 3."])
 
     def test_a_sentence_of_the_engine_copied_word_for_word_is_accepted_whole(self):
         """A label or a sentence the engine gave as it is may hold what the checker refuses elsewhere: a twelfth, a half."""
@@ -489,7 +553,7 @@ class Checking(unittest.TestCase):
         """What the checker does not do. Outside the three quantities whose role is checked, it does not judge the words
         around a figure. 43'123 CHF is what Alexia borrows at most in this world, not her net worth: the sentence is
         false, and it passes. So does a false count next to a verb the checker does not know."""
-        for text in ("At 28 her net worth is 43'123 CHF.", "She holds 2 goals of 6.", "At 27 she has −5'145 CHF set aside."):
+        for text in ("At 28 her net worth is 43'123 CHF.", "She reaches 2 goals of 6.", "At 27 she has −5'145 CHF set aside."):
             with self.subTest(text=text):
                 self.assertTrue(check(text, self.facts("en"), lang="en").ok)
 

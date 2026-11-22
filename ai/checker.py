@@ -14,7 +14,8 @@ Two things go beyond the presence of a figure. A label or a sentence the engine 
 ledger, the source of an assumption) is accepted when it is copied word for word, even if it holds "1/12" or "half".
 And for three quantities the role of the number is checked: a number of goals next to "keep" must be the number of
 goals kept in this world, next to "lose" the number lost, and an amount next to "borrow" or "finance" must be the
-peak borrowing.
+peak borrowing. In a sentence that says "with no crisis", the same words call for the figures of the route with no
+crisis.
 
 What the checker does not do: beyond these three, it does not judge the words around the figures. A sentence may
 put a true figure in a wrong reasoning ("her net worth is 43'123 CHF" when that amount is what she borrows). It
@@ -35,7 +36,10 @@ UNITS = ("chf", "percent", "points", "age", "years", "months", "count", "number"
 # unit ("12 are required").
 BARE = ("count", "age", "number")
 YEARS = ("age", "years")       # "27 years", "27 ans": an age or a length, the wording does not say which
-ROLES = ("kept", "lost", "borrowed")     # the quantities whose role in a sentence is checked: goals kept, goals lost, peak borrowing
+# The quantities whose role in a sentence is checked: goals kept, goals lost, peak borrowing. The goals kept and the
+# peak borrowing have a twin for the route with no crisis, checked in the sentences that say "with no crisis". With no
+# crisis no goal is lost, by definition: that one has no twin.
+ROLES = ("kept", "lost", "borrowed", "kept_calm", "borrowed_calm")
 ATTEMPTS = 3                   # the first text, then two more tries at most
 _CLOSE = 1e-9                  # two numbers closer than this are the same number
 
@@ -275,7 +279,8 @@ _ONE = {"en": re.compile(rf"(?<![\w-])(?:one|an?)(?=[ -](?:(?:full|whole|more|ex
 # The three quantities whose role is checked. A number of goals next to "keep" must be the number of goals kept in
 # this world; next to "lose", the number lost; an amount next to "borrow" or "finance", the peak borrowing.
 _ROLE_WORDS = {
-    "kept": re.compile(r"\bkeep(?:s|ing)?\b|\bkept\b|\bgard(?:e[sz]?|ent|é(?:e|s|es)?|er|ai[st]|aient|era(?:it)?|ant)\b", re.IGNORECASE),
+    "kept": re.compile(r"\bkeep(?:s|ing)?\b|\bkept\b|\bhold(?:s|ing)?\b|\bheld\b"
+                       r"|\bgard(?:e[sz]?|ent|é(?:e|s|es)?|er|ai[st]|aient|era(?:it)?|ant)\b|\btien(?:s|t|nent)\b|\btenu(?:e|s|es)?\b", re.IGNORECASE),
     "lost": re.compile(r"\blos(?:e|es|ing)\b|\blost\b|\bperd(?:s|ent|u(?:e|s|es)?|re|ai[st]|aient|ra(?:it)?|ant)?\b", re.IGNORECASE),
     "borrowed": re.compile(r"\bborrow\w*|\bemprunt\w*|\bfinanc(?:e[sd]?|ing|ent|é(?:e|s|es)?|er|ements?)\b", re.IGNORECASE),
 }
@@ -286,6 +291,11 @@ _GOALS_AFTER = {"en": re.compile(rf"(?: (?:out of|of)(?: (?:{_THE['en']}))?(?: \
                                  re.IGNORECASE)}
 # "of the 6", "sur 6", "de ses 3": the whole a part is taken from. It is never the number kept or lost.
 _PART_OF = _OF_BEFORE
+# A sentence that says "with no crisis" speaks of the route with no crisis: the number next to "keep" is then the number
+# of goals kept with no crisis, not the number kept in the world the text explains.
+_NO_CRISIS = re.compile(r"\b(?:with no|without(?: a| any)?)\s+(?:crisis|crises|shocks?)\b|\bsans\s+(?:aucune?\s+)?(?:crises?|chocs?)\b"
+                        r"|\breference world\b|\bmonde de r[ée]f[ée]rence\b", re.IGNORECASE)
+_SENTENCE_END = re.compile(r"[;!?\n]|\.(?=\s+[^\W\d_a-zà-ÿ]|\s*$)")
 # What ends a clause: a number and a word on either side of it do not belong together. "max." does not end one.
 _BREAK = re.compile(r"[;!?\n(),]|\s[–—-]\s|\.(?=\s+[^\W\d_a-zà-ÿ]|\s*$)")
 _SMALL = frozenset("only just exactly still all her the its your my a are is were was be been being have has had will would "
@@ -296,10 +306,10 @@ _LINK = {"kept": frozenset("are is were was be been being have has had still she
 _LINK["lost"] = _LINK["kept"]
 # After "keep" or "lose", "a goal", "no goal", "un objectif", "aucun objectif" state a number of goals: 1 or 0.
 _ROLE_ONE = {
-    "en": re.compile(r"\b(?:keep(?:s|ing)?|kept|los(?:e|es|ing)|lost)\s+(?:(?:only|just|exactly)\s+)?(an?|no|none)"
+    "en": re.compile(r"\b(?:keep(?:s|ing)?|kept|hold(?:s|ing)?|held|los(?:e|es|ing)|lost)\s+(?:(?:only|just|exactly)\s+)?(an?|no|none)"
                      rf"(?=\s+(?:of\s+(?:{_THE['en']})\s+(?:\w+\s+)?)?(?:(?:single|other)\s+)?(?:goals?|stations?|doors?)\b|\s*(?:[.,;!?)]|$))",
                      re.IGNORECASE),
-    "fr": re.compile(r"\b(?:gard|perd)\w*\s+(?:(?:que|seulement|encore)\s+|qu['’])?(une?|aucune?)"
+    "fr": re.compile(r"\b(?:gard\w*|perd\w*|tien(?:s|t|nent)|tenu\w*)\s+(?:(?:que|seulement|encore)\s+|qu['’])?(une?|aucune?)"
                      rf"(?=\s+(?:seule?\s+)?(?:de\s+(?:{_THE['fr']})\s+|des\s+)?(?:\w+\s+)?(?:objectifs?|stations?|portes?)\b|\s*(?:[.,;!?)]|$))",
                      re.IGNORECASE)}
 
@@ -575,15 +585,22 @@ def _copied(flat: str, quotes: list[Quote]) -> list[tuple[int, int, Quote]]:
 def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: str) -> tuple[dict[int, Problem], dict[int, str]]:
     """For the three quantities with a role: the number standing next to the word that names the quantity has to be that
     quantity. Next to: in the same clause, three words away at most. When two words could claim the same number, the
-    nearest takes it. Returns the refusals, and the roles confirmed, both by position of the figure."""
+    nearest takes it. In a sentence that says "with no crisis", the quantity is the one of the route with no crisis.
+    Returns the refusals, and the roles confirmed, both by position of the figure."""
     wanted = {role: [fact for fact in facts if fact.role == role] for role in ROLES}
     breaks = [found.start() for found in _BREAK.finditer(flat)]
+    ends = [found.start() for found in _SENTENCE_END.finditer(flat)]
+    sentence = lambda position: sum(end < position for end in ends)
+    calm = {sentence(found.start()) for found in _NO_CRISIS.finditer(flat)}
     pairs = []
-    for role in ROLES:
-        for word in _ROLE_WORDS[role].finditer(flat) if wanted[role] else ():
+    for name in _ROLE_WORDS:
+        for word in _ROLE_WORDS[name].finditer(flat):
+            role = f"{name}_calm" if sentence(word.start()) in calm else name
+            if not wanted.get(role):                    # no fact carries this role: nothing can be said of the place of a number
+                continue
             for index, figure in enumerate(figures):
                 end, counted = figure.end, True
-                if role == "borrowed":
+                if name == "borrowed":
                     if figure.units != ("chf",):
                         continue
                 else:
@@ -599,11 +616,11 @@ def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: 
                     continue
                 between = flat[low:high]
                 words = [w.lower() for w in re.findall(r"[^\W\d_]+", between)]
-                if any(low <= at < high for at in breaks) or len(words) > 3 or first and any(w not in _LINK[role] for w in words):
+                if any(low <= at < high for at in breaks) or len(words) > 3 or first and any(w not in _LINK[name] for w in words):
                     continue
                 if not counted and any(w not in _SMALL for w in words):         # a bare number counts goals only right next to the verb
                     continue
-                if role == "borrowed" and first and {"to", "à"} & set(words) and re.match(r"\s+[^\W\d_]", flat[word.end():]):
+                if name == "borrowed" and first and {"to", "à"} & set(words) and re.match(r"\s+[^\W\d_]", flat[word.end():]):
                     continue                                                    # "73'940 CHF to finance her master's": a purpose
                 pairs.append((len(words), len(between), role, word.start(), word.group(0), index))
     named, claimed, out = set(), {}, {}
@@ -616,9 +633,16 @@ def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: 
         if not any(_same(fact.value, figure.value) for fact in wanted[role]):
             what = {"kept": say("the number of goals kept in this world is", "le nombre d'objectifs gardés dans ce monde est"),
                     "lost": say("the number of goals lost in this world is", "le nombre d'objectifs perdus dans ce monde est"),
-                    "borrowed": say("the peak borrowing of this world is", "l'emprunt maximal de ce monde est")}[role]
-            out[index] = Problem("role", figure.text, say(f"“{figure.text}” stands next to “{said}”: {what} {fact.written()}.",
-                                                          f"« {figure.text} » est à côté de « {said} » : {what} {fact.written()}."))
+                    "borrowed": say("the peak borrowing of this world is", "l'emprunt maximal de ce monde est"),
+                    "kept_calm": say("the number of goals kept with no crisis is", "le nombre d'objectifs gardés sans crise est"),
+                    "borrowed_calm": say("the peak borrowing with no crisis is", "l'emprunt maximal sans crise est")}[role]
+            where = say(" in a sentence about the route with no crisis", " dans une phrase qui parle du trajet sans crise") if role.endswith("_calm") else ""
+            # The usual slip: the figure of the route with no crisis, written in the sentence about this world.
+            aside = "" if role.endswith("_calm") or not any(_same(twin.value, figure.value) for twin in wanted.get(f"{role}_calm", ())) else say(
+                " To give the figure of the route with no crisis, write it in a sentence of its own that says “with no crisis”.",
+                " Pour donner le chiffre du trajet sans crise, écris-le dans une phrase à part qui dit « sans crise ».")
+            out[index] = Problem("role", figure.text, say(f"“{figure.text}” stands next to “{said}”{where}: {what} {fact.written()}.{aside}",
+                                                          f"« {figure.text} » est à côté de « {said} »{where} : {what} {fact.written()}.{aside}"))
     return out, claimed
 
 

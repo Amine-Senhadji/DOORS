@@ -335,6 +335,25 @@ class TheExplanations(unittest.TestCase):
         self.assertIn("“2” stands next to “keep”: the number of goals kept in this world is 1.", model.requests[3]["messages"][-1]["content"])
         self.assertEqual([(world["explanation"]["accepted"], world["explanation"]["attempts"]) for world in result["ranking"]], [(True, 1), (True, 2), (True, 1)])
 
+    def test_the_figures_of_the_route_with_no_crisis_have_a_sentence_of_their_own(self):
+        """The model is told so, and the checker reads it so: "with no crisis the route keeps 3 goals" is checked against
+        the route with no crisis, and the same 3 next to "keep" in the sentence about a world is refused."""
+        slip = {TWICE: PLAIN, LONG: "You keep 3 goals, and after twelve months of unemployment only 1.", BOTH: PLAIN}
+        right = lambda world: "With no crisis the route keeps 3 goals and borrows up to 14'234 CHF. Here you keep 1 goal and borrow up to 43'123 CHF."
+        result, model = self.search_then(writes(slip), writes(right))
+        system = model.requests[2]["system"]
+        for words in ('Never put the number of goals kept with no crisis next to "keep" in the sentence that says what happens in that world.',
+                      'write it in a sentence of its own that says "with no crisis": "With no crisis the route keeps 3 goals."',
+                      "« Sans crise, le trajet garde 3 objectifs. »", 'Next to "keep", "hold" or "lose"'):
+            self.assertIn(words, system)
+        self.assertIn("“3” stands next to “keep”: the number of goals kept in this world is 1. To give the figure of the route with no crisis, write it in a "
+                      "sentence of its own that says “with no crisis”.", model.requests[3]["messages"][-1]["content"])
+        explained = result["ranking"][1]["explanation"]
+        self.assertEqual((explained["accepted"], explained["attempts"], explained["text"]), (True, 2, right(LONG)))
+        self.assertEqual([(figure["text"], figure["origins"]) for figure in explained["figures"]],
+                         [("3", ["Goals kept with no crisis"]), ("14'234 CHF", ["Peak borrowing with no crisis"]), ("1", ["Goals kept in this world"]),
+                          ("43'123 CHF", ["Peak borrowing in this world"])])
+
     def test_three_refused_texts_leave_the_facts_of_the_engine_alone(self):
         result, model = self.search_then(writes(lambda world: "You borrow about 40'000 CHF."), writes(lambda world: "Your debt doubles."),
                                          writes(lambda world: "This is the best case: 99 goals."))
@@ -372,7 +391,8 @@ class TheExplanations(unittest.TestCase):
                 self.assertTrue(set(section) <= set(shown))
                 self.assertEqual(section[:4], shown[:4])
         self.assertIn("- Note of the ledger (quote): “No unemployment benefit: 0 months contributed out of 24, 12 are required”", brief)
-        self.assertIn("Figures common to every world\n- Goals in all: 6\n- Goals kept with no crisis: 3\n- Peak borrowing with no crisis: 14'234 CHF", brief)
+        self.assertIn("Figures common to every world\n- Goals in all: 6\n- Goals kept with no crisis: 3\n- Goals lost with no crisis: 0\n"
+                      "- Peak borrowing with no crisis: 14'234 CHF", brief)
         self.assertIn("- Career change: amount asked: 39'366 CHF\n- Career change: amount reached with no crisis: 42'200 CHF", brief)
 
     def test_the_explanation_is_asked_in_the_language_of_the_screen_with_the_same_figures(self):
