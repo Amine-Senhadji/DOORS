@@ -10,9 +10,16 @@ a fact of the same unit class, copied exactly. A text is also refused when it ro
 writes. A refused text is never shown: the model gets the list of what was refused and two more tries; after that
 the screen shows the engine's facts alone.
 
-What the checker does not do: it does not judge the words around the figures. A sentence may put a true figure in
-a wrong reasoning ("she keeps 2 goals" when 2 is the number she loses). It guarantees where each figure comes from,
-not what is said about it. It reads digits, and words up to ninety-nine; it does not read Roman numerals.
+Two things go beyond the presence of a figure. A label or a sentence the engine gave as it is (a line of the
+ledger, the source of an assumption) is accepted when it is copied word for word, even if it holds "1/12" or "half".
+And for three quantities the role of the number is checked: a number of goals next to "keep" must be the number of
+goals kept in this world, next to "lose" the number lost, and an amount next to "borrow" or "finance" must be the
+peak borrowing.
+
+What the checker does not do: beyond these three, it does not judge the words around the figures. A sentence may
+put a true figure in a wrong reasoning ("her net worth is 43'123 CHF" when that amount is what she borrows). It
+guarantees where each figure comes from, not what is said about it. It reads digits, and words up to ninety-nine;
+it does not read Roman numerals.
 """
 from __future__ import annotations
 
@@ -28,6 +35,7 @@ UNITS = ("chf", "percent", "points", "age", "years", "months", "count", "number"
 # unit ("12 are required").
 BARE = ("count", "age", "number")
 YEARS = ("age", "years")       # "27 years", "27 ans": an age or a length, the wording does not say which
+ROLES = ("kept", "lost", "borrowed")     # the quantities whose role in a sentence is checked: goals kept, goals lost, peak borrowing
 ATTEMPTS = 3                   # the first text, then two more tries at most
 _CLOSE = 1e-9                  # two numbers closer than this are the same number
 
@@ -48,16 +56,19 @@ class Fact:
     unit: str                      # one of UNITS
     origin: str                    # where it comes from, in words for the reader
     world: str | None = None       # the world it belongs to, when it belongs to one
+    role: str | None = None        # one of ROLES, for the three quantities whose place in a sentence is checked
 
     def __post_init__(self):
         if self.unit not in UNITS:
             raise ValueError(f"Unknown unit '{self.unit}'. Units: {list(UNITS)}")
+        if self.role is not None and self.role not in ROLES:
+            raise ValueError(f"Unknown role '{self.role}'. Roles: {list(ROLES)}")
         object.__setattr__(self, "value", float(self.value))
 
     @classmethod
-    def chf(cls, value: float, origin: str, world: str | None = None) -> "Fact":
+    def chf(cls, value: float, origin: str, world: str | None = None, role: str | None = None) -> "Fact":
         """An amount, rounded to the franc as the screen writes it."""
-        return cls(float(round(value)), "chf", origin, world)
+        return cls(float(round(value)), "chf", origin, world, role)
 
     @classmethod
     def percent(cls, value: float, origin: str, world: str | None = None) -> "Fact":
@@ -82,8 +93,8 @@ class Fact:
         return cls(value, "months", origin, world)
 
     @classmethod
-    def count(cls, value: float, origin: str, world: str | None = None) -> "Fact":
-        return cls(value, "count", origin, world)
+    def count(cls, value: float, origin: str, world: str | None = None, role: str | None = None) -> "Fact":
+        return cls(value, "count", origin, world, role)
 
     @classmethod
     def number(cls, value: float, origin: str, world: str | None = None) -> "Fact":
@@ -108,6 +119,19 @@ class Fact:
         return n
 
 
+@dataclass(frozen=True)
+class Quote:
+    """A label or a sentence the engine gave as it is: a line of the ledger, the source of an assumption. Copied word
+    for word, it is accepted whole, even where it holds what the checker refuses elsewhere ("1/12", "half")."""
+    text: str
+    origin: str                    # where it comes from, in words for the reader
+    world: str | None = None
+
+    def __post_init__(self):
+        if not re.search(r"[^\W\d_]", self.text):
+            raise ValueError("A quote is a label or a sentence: a number alone is a fact, not a quote.")
+
+
 # ------------------------------------------------------------------------------------------------- what a text says
 @dataclass(frozen=True)
 class Figure:
@@ -121,7 +145,7 @@ class Figure:
 
 @dataclass(frozen=True)
 class Problem:
-    kind: str                      # banned, ratio, approximation, abbreviation, unreadable, identifier, figure, empty
+    kind: str                      # banned, ratio, approximation, abbreviation, unreadable, identifier, figure, role, empty
     text: str                      # the words refused
     message: str                   # why, for the model and for the reader
 
@@ -245,6 +269,38 @@ _ONE = {"en": re.compile(rf"(?<![\w-])(?:one|an?)(?=[ -](?:(?:full|whole|more|ex
         "fr": re.compile(rf"(?<![\w-])une?(?=[ -](?:(?:seule?|longue?|petite?) )?(?:an|mois|année)\b)"
                          rf"|(?<![\w-])une?(?= (?:seule? )?(?:{_GOALS['fr']} )?sur (?:les |ses )?{_FEW['fr']})"
                          rf"|(?<![\w-])une?(?= (?:des|d'entre) (?:les |ses )?(?:{_FEW['fr']} )?{_GOALS['fr']}\b)", re.IGNORECASE)}
+
+
+# The three quantities whose role is checked. A number of goals next to "keep" must be the number of goals kept in
+# this world; next to "lose", the number lost; an amount next to "borrow" or "finance", the peak borrowing.
+_ROLE_WORDS = {
+    "kept": re.compile(r"\bkeep(?:s|ing)?\b|\bkept\b|\bgard(?:e[sz]?|ent|é(?:e|s|es)?|er|ai[st]|aient|era(?:it)?|ant)\b", re.IGNORECASE),
+    "lost": re.compile(r"\blos(?:e|es|ing)\b|\blost\b|\bperd(?:s|ent|u(?:e|s|es)?|re|ai[st]|aient|ra(?:it)?|ant)?\b", re.IGNORECASE),
+    "borrowed": re.compile(r"\bborrow\w*|\bemprunt\w*|\bfinanc(?:e[sd]?|ing|ent|é(?:e|s|es)?|er|ements?)\b", re.IGNORECASE),
+}
+# "2 goals", "2 of the 6 goals", "2 des 6 objectifs": what makes a count a number of goals.
+_GOALS_AFTER = {"en": re.compile(r"(?: (?:out of|of)(?: the| her| its)?(?: \w+)?)?(?: (?:other|more|tested|single))? (?:goals?|stations?|doors?)\b",
+                                 re.IGNORECASE),
+                "fr": re.compile(r"(?: (?:des|sur|de ses|de ces|d'entre)(?: les| ses)?(?: \w+)?)?(?: (?:autres?|seule?s?))? (?:objectifs?|stations?|portes?)\b",
+                                 re.IGNORECASE)}
+# "of the 6", "sur 6", "de ses 3": the whole a part is taken from. It is never the number kept or lost.
+_PART_OF = re.compile(r"\b(?:out of|of|sur|des|d'entre|de)\s+(?:(?:the|her|its|les|ses|ces)\s+)?$", re.IGNORECASE)
+# What ends a clause: a number and a word on either side of it do not belong together. "max." does not end one.
+_BREAK = re.compile(r"[;!?\n(),]|\s[–—-]\s|\.(?=\s+[^\W\d_a-zà-ÿ]|\s*$)")
+_SMALL = frozenset("only just exactly still all her the its a are is were was be been being have has had will would "
+                   "que qu seulement encore toujours exactement ses les sont est ont été sera seront plus en ne n".split())
+# The words that may stand between a number and the word that names it, when the number comes first: "2 goals are lost".
+_LINK = {"kept": frozenset("are is were was be been being have has had still she that which sont est ont a été encore toujours elle qu que".split()),
+         "borrowed": frozenset("to of in are is were was be been à a de d en sont est été".split())}
+_LINK["lost"] = _LINK["kept"]
+# After "keep" or "lose", "a goal", "no goal", "un objectif", "aucun objectif" state a number of goals: 1 or 0.
+_ROLE_ONE = {
+    "en": re.compile(r"\b(?:keep(?:s|ing)?|kept|los(?:e|es|ing)|lost)\s+(?:(?:only|just|exactly)\s+)?(an?|no|none)"
+                     r"(?=\s+(?:of\s+(?:the|her|its)\s+(?:\w+\s+)?)?(?:(?:single|other)\s+)?(?:goals?|stations?|doors?)\b|\s*(?:[.,;!?)]|$))",
+                     re.IGNORECASE),
+    "fr": re.compile(r"\b(?:gard|perd)\w*\s+(?:(?:que|seulement|encore)\s+|qu['’])?(une?|aucune?)"
+                     r"(?=\s+(?:seule?\s+)?(?:de\s+ses\s+|des\s+)?(?:\w+\s+)?(?:objectifs?|stations?|portes?)\b|\s*(?:[.,;!?)]|$))",
+                     re.IGNORECASE)}
 
 
 def _flat(text: str) -> str:
@@ -401,6 +457,10 @@ def _read(text: str, lang: str) -> Reading:
     for found in _ONE[lang].finditer(flat):                               # what follows it is read in the text as written
         if "\x00" not in left[found.start():found.end()]:
             add(found.start(), found.end(), 1.0, signed=False)
+    for found in _ROLE_ONE[lang].finditer(flat):                          # "keeps a goal", "ne garde aucun objectif"
+        start, end = found.span(1)
+        if "\x00" not in left[start:end]:
+            add(start, end, 0.0 if found.group(1).lower() in ("no", "none", "aucun", "aucune") else 1.0, signed=False)
     for found in _LARGE[lang].finditer("".join(left)):
         refuse("unreadable", found.group(0))
 
@@ -498,14 +558,92 @@ def _hint(figure: Figure, facts: list[Fact], elsewhere: list[Fact]) -> str:
     return ""
 
 
-def check(text: str, facts: Iterable[Fact], identifiers: Iterable[str] = (), elsewhere: Iterable[Fact] = (),
+def _copied(flat: str, quotes: list[Quote]) -> list[tuple[int, int, Quote]]:
+    """Where a text copies a quote word for word. The kind of space, the kind of apostrophe and capital letters do not
+    count, and the final full stop of the quote may be left out. A changed word makes it an ordinary text again."""
+    found: list[tuple[int, int, Quote]] = []
+    for quote in sorted(quotes, key=lambda quote: -len(quote.text)):
+        words = _flat(quote.text).replace("’", "'").strip().rstrip(".").strip()
+        pattern = r"(?<!\w)" + re.escape(words).replace("\\ ", r"\s+").replace("'", "['’]") + r"(?!\w|[.,'’]\d)"
+        for match in re.finditer(pattern, flat, re.IGNORECASE):
+            if not any(match.start() < end and start < match.end() for start, end, _ in found):
+                found.append((match.start(), match.end(), quote))
+    return sorted(found, key=lambda place: place[0])
+
+
+def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: str) -> dict[int, Problem]:
+    """For the three quantities with a role: the number standing next to the word that names the quantity has to be that
+    quantity. Next to: in the same clause, three words away at most. When two words could claim the same number, the
+    nearest takes it. Returns the refusals, by position of the figure."""
+    wanted = {role: [fact for fact in facts if fact.role == role] for role in ROLES}
+    breaks = [found.start() for found in _BREAK.finditer(flat)]
+    pairs = []
+    for role in ROLES:
+        for word in _ROLE_WORDS[role].finditer(flat) if wanted[role] else ():
+            for index, figure in enumerate(figures):
+                end, counted = figure.end, True
+                if role == "borrowed":
+                    if figure.units != ("chf",):
+                        continue
+                else:
+                    if "count" not in figure.units or _PART_OF.search(flat, 0, figure.start):
+                        continue
+                    goals = _GOALS_AFTER[lang].match(flat, figure.end)
+                    end, counted = (goals.end(), True) if goals else (figure.end, False)
+                if end <= word.start():
+                    low, high, first = end, word.start(), True                 # the number comes first: "2 goals are lost"
+                elif word.end() <= figure.start:
+                    low, high, first = word.end(), figure.start, False          # the word comes first: "she loses 2 goals"
+                else:
+                    continue
+                between = flat[low:high]
+                words = [w.lower() for w in re.findall(r"[^\W\d_]+", between)]
+                if any(low <= at < high for at in breaks) or len(words) > 3 or first and any(w not in _LINK[role] for w in words):
+                    continue
+                if not counted and any(w not in _SMALL for w in words):         # a bare number counts goals only right next to the verb
+                    continue
+                if role == "borrowed" and first and {"to", "à"} & set(words) and re.match(r"\s+[^\W\d_]", flat[word.end():]):
+                    continue                                                    # "73'940 CHF to finance her master's": a purpose
+                pairs.append((len(words), len(between), role, word.start(), word.group(0), index))
+    named, claimed, out = set(), set(), {}
+    for _, _, role, at, said, index in sorted(pairs):
+        if (role, at) in named or index in claimed:
+            continue
+        named.add((role, at))
+        claimed.add(index)
+        figure, fact = figures[index], wanted[role][0]
+        if not any(_same(fact.value, figure.value) for fact in wanted[role]):
+            what = {"kept": say("the number of goals kept in this world is", "le nombre d'objectifs gardés dans ce monde est"),
+                    "lost": say("the number of goals lost in this world is", "le nombre d'objectifs perdus dans ce monde est"),
+                    "borrowed": say("the peak borrowing of this world is", "l'emprunt maximal de ce monde est")}[role]
+            out[index] = Problem("role", figure.text, say(f"“{figure.text}” stands next to “{said}”: {what} {fact.written()}.",
+                                                          f"« {figure.text} » est à côté de « {said} » : {what} {fact.written()}."))
+    return out
+
+
+def check(text: str, facts: Iterable[Fact | Quote], identifiers: Iterable[str] = (), elsewhere: Iterable[Fact | Quote] = (),
           lang: str | None = None) -> Report:
-    """Compares a text with the facts it may use. `identifiers`: the worlds it may name. `elsewhere`: the facts of the
-    other worlds, used only to say "this figure belongs to another world". `lang`: the language of the text."""
-    facts, elsewhere, identifiers, lang = list(facts), list(elsewhere), list(identifiers), lang or i18n.current()
+    """Compares a text with what it may use: facts, and quotes (sentences of the engine it may copy word for word).
+    `identifiers`: the worlds it may name. `elsewhere`: the facts of the other worlds, used only to say "this figure
+    belongs to another world". `lang`: the language of the text."""
+    given, identifiers, lang = list(facts), list(identifiers), lang or i18n.current()
+    facts, quotes = [item for item in given if isinstance(item, Fact)], [item for item in given if isinstance(item, Quote)]
+    elsewhere = [item for item in elsewhere if isinstance(item, Fact)]
     with i18n.use(lang):
-        reading = _read(text, lang)
+        # A sentence of the engine copied word for word is set apart: its figures are the engine's, and what it says is
+        # not read again. The rest of the text is read as usual.
+        flat = _flat(text)
+        copied = _copied(flat, quotes)
+        rest = list(flat)
+        for start, end, _ in copied:
+            rest[start:end] = "\x00" * (end - start)
+        reading = _read("".join(rest), lang)
         problems = list(reading.problems)
+        placed: list[tuple[int, Verified]] = []
+        for start, end, quote in copied:
+            inside = _read(flat[start:end], lang)
+            placed += [(start + figure.start, Verified(figure.text, figure.value, figure.units[0], (quote.origin,))) for figure in inside.figures]
+            problems += [problem for problem in inside.problems if problem.kind == "banned" and problem not in problems]
         if not text.strip():
             problems.append(Problem("empty", "", say("The text is empty.", "Le texte est vide.")))
         # A world may be named whole, by one of its crises, or with its two crises in the other order.
@@ -515,16 +653,18 @@ def check(text: str, facts: Iterable[Fact], identifiers: Iterable[str] = (), els
             if whole(identifier) not in allowed:
                 problems.append(Problem("identifier", identifier, say(f"“{identifier}” is not one of the worlds tested here.",
                                                                        f"« {identifier} » n'est pas un des mondes testés ici.")))
-        verified = []
-        for figure in reading.figures:
+        misplaced = _misplaced("".join(rest), reading.figures, facts, lang)
+        for index, figure in enumerate(reading.figures):
             found = [fact for fact in facts if fact.unit in figure.units and _same(fact.value, figure.value)]
-            if found:
-                verified.append(Verified(figure.text, figure.value, found[0].unit, tuple(dict.fromkeys(fact.origin for fact in found))))
+            if index in misplaced:                       # the right kind of number, or not, in the wrong place
+                problems.append(misplaced[index])
+            elif found:
+                placed.append((figure.start, Verified(figure.text, figure.value, found[0].unit, tuple(dict.fromkeys(fact.origin for fact in found)))))
             else:
                 message = say(f"“{figure.text}” is not a figure the engine gave for this text.",
                               f"« {figure.text} » n'est pas un chiffre que le moteur a donné pour ce texte.")
                 problems.append(Problem("figure", figure.text, message + _hint(figure, facts, elsewhere)))
-        return Report(tuple(verified), tuple(problems), reading.identifiers)
+        return Report(tuple(verified for _, verified in sorted(placed, key=lambda place: place[0])), tuple(problems), reading.identifiers)
 
 
 # ------------------------------------------------------------------------------------------ refusal, and trying again
@@ -552,8 +692,8 @@ class Outcome:
                 "refusals": [sorted({problem.kind for problem in report.problems}) for report in self.attempts if not report.ok]}
 
 
-def supervise(write: Callable[[dict[str, str] | None], Mapping[str, str]], facts: Mapping[str, Iterable[Fact]],
-              common: Iterable[Fact] = (), identifiers: Iterable[str] = (), lang: str | None = None,
+def supervise(write: Callable[[dict[str, str] | None], Mapping[str, str]], facts: Mapping[str, Iterable[Fact | Quote]],
+              common: Iterable[Fact | Quote] = (), identifiers: Iterable[str] = (), lang: str | None = None,
               attempts: int = ATTEMPTS) -> dict[str, Outcome]:
     """Asks for one text per key (one per world), checks each against the facts of its own key, and asks again for the
     refused ones only, with what was refused: `attempts` times in all. `write(feedback)` returns the texts; `feedback`

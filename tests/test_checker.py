@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 from ai import checker
-from ai.checker import ATTEMPTS, BARE, UNITS, YEARS, Fact, check, facts_in, read, supervise
+from ai.checker import ATTEMPTS, BARE, UNITS, YEARS, Fact, Quote, check, facts_in, read, supervise
 from engine import i18n
 from engine.explore import doors_of, margins_of
 from engine.simulate import load_scenario
@@ -237,18 +237,19 @@ class Checking(unittest.TestCase):
         margins = margins_of(hit, th, age0)
         notes = [flow.label for month in hit.months for flow in month.flows if flow.label.startswith("Pas d'indemnité de chômage")]
         cls.note, cls.months_without = notes[0], len(notes)
-        cls.engine = {"kept": sum(kept.values()), "total": len(kept), "lost": sum(before[k] and not kept[k] for k in kept),
+        cls.engine = {"kept": sum(kept.values()), "total": len(kept), "lost": sum(before[k] and not kept[k] for k in kept), "calm": sum(before.values()),
                       "peak": hit.peak_financing_chf, "worth": hit.net_worth_end_chf, "aside": margins["reconversion"][0],
                       "asked": margins["reconversion"][1]}
         # What the tests below write by hand is what the engine gives today.
-        assert (cls.engine["kept"], cls.engine["total"], cls.engine["lost"], cls.months_without) == (1, 6, 2, 9)
+        assert (cls.engine["kept"], cls.engine["total"], cls.engine["lost"], cls.engine["calm"], cls.months_without) == (1, 6, 2, 3, 9)
         assert [round(cls.engine[key]) for key in ("peak", "worth", "aside", "asked")] == [43123, 48033, -5145, 39366]
 
     def facts(self, lang: str) -> list[Fact]:
         e = self.engine
         with i18n.use(lang):
-            return [Fact.count(e["kept"], "Goals kept", WORLD), Fact.count(e["total"], "Goals in all"), Fact.count(e["lost"], "Goals lost", WORLD),
-                    Fact.chf(e["peak"], "Peak borrowing", WORLD), Fact.chf(e["worth"], "Net worth at 30", WORLD),
+            return [Fact.count(e["kept"], "Goals kept", WORLD, "kept"), Fact.count(e["total"], "Goals in all"),
+                    Fact.count(e["lost"], "Goals lost", WORLD, "lost"), Fact.count(e["calm"], "Goals kept with no shock"),
+                    Fact.chf(e["peak"], "Peak borrowing", WORLD, "borrowed"), Fact.chf(e["worth"], "Net worth at 30", WORLD),
                     Fact.chf(e["aside"], "Career change: set aside at 28", WORLD), Fact.chf(e["asked"], "Career change: amount asked"),
                     Fact.age(27, "Start of the crisis", WORLD), Fact.age(28, "Career change: age"), Fact.months(12, "Length of the crisis", WORLD),
                     Fact.months(self.months_without, "Months with no benefit", WORLD),
@@ -312,11 +313,11 @@ class Checking(unittest.TestCase):
                  "She borrows 43'123 months.": "The engine gave 43'123 CHF (Peak borrowing): the same number, with another unit.",
                  "She keeps 6 months.": "The engine gave 6 (Goals in all): the same number, with another unit.",
                  "At 28 she has 5'145 CHF set aside.": "The engine gave −5'145 CHF: keep its sign.",
-                 "She borrows −43'123 CHF.": "The engine gave 43'123 CHF: keep its sign.",
-                 "She borrows 43'000 CHF.": "It looks like a rounding of 43'123 CHF: copy it exactly.",
-                 "She borrows 43'100 CHF.": "It looks like a rounding of 43'123 CHF: copy it exactly.",
-                 "She borrows 43'123.47 CHF.": "It looks like a rounding of 43'123 CHF: copy it exactly.",
-                 "She borrows 43.123 CHF.": "", "She keeps 3 goals.": "", "She is 26.": ""}
+                 "Her debt peaks at −43'123 CHF.": "The engine gave 43'123 CHF: keep its sign.",
+                 "Her debt peaks at 43'000 CHF.": "It looks like a rounding of 43'123 CHF: copy it exactly.",
+                 "Her debt peaks at 43'100 CHF.": "It looks like a rounding of 43'123 CHF: copy it exactly.",
+                 "Her debt peaks at 43'123.47 CHF.": "It looks like a rounding of 43'123 CHF: copy it exactly.",
+                 "Her debt peaks at 43.123 CHF.": "", "There are 4 goals.": "", "She is 26.": ""}
         for text, hint in cases.items():
             report = check(text, facts, lang="en")
             with self.subTest(text=text):
@@ -380,12 +381,111 @@ class Checking(unittest.TestCase):
         with self.assertRaises(ValueError):
             Fact(1, "apples", "nowhere")
 
-    def test_the_limit_a_true_figure_in_a_wrong_sentence_passes(self):
-        """What the checker does not do. In this world Alexia keeps 1 goal and loses 2. "She keeps 2 goals" is false, and it
-        passes: 2 is a count the engine gave for this world. The checker says where a figure comes from, not what is said about it."""
-        report = check("She keeps 2 goals of 6.", self.facts("en"), lang="en")
-        self.assertTrue(report.ok)
-        self.assertEqual([figure.origins for figure in report.figures], [("Goals lost",), ("Goals in all",)])
+    def test_the_number_next_to_keep_lose_or_borrow_has_to_be_that_quantity(self):
+        """For three quantities the role of the number is checked, not only its presence. In this world Alexia keeps 1 goal,
+        loses 2 and borrows up to 43'123 CHF. Each number below is a figure of the engine for this world: what is refused
+        is where it stands."""
+        refused_en = {
+            "She keeps 2 goals of 6.": ["“2” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She loses 1 goal and keeps 2.": ["“1” stands next to “loses”: the number of goals lost in this world is 2.",
+                                              "“2” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She keeps only 2.": ["“2” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She keeps all 6.": ["“6” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She kept 3 goals.": ["“3” stands next to “kept”: the number of goals kept in this world is 1."],
+            "2 goals are kept.": ["“2” stands next to “kept”: the number of goals kept in this world is 1."],
+            "She keeps no goal.": ["“no” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She keeps none of the 6 goals.": ["“none” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "She loses a goal.": ["“a” stands next to “loses”: the number of goals lost in this world is 2."],
+            "She has lost 1 goal.": ["“1” stands next to “lost”: the number of goals lost in this world is 2."],
+            "She borrows up to 48'033 CHF.": ["“48'033 CHF” stands next to “borrows”: the peak borrowing of this world is 43'123 CHF."],
+            "Peak borrowing: 48'033 CHF.": ["“48'033 CHF” stands next to “borrowing”: the peak borrowing of this world is 43'123 CHF."],
+            "Up to 48'033 CHF to finance.": ["“48'033 CHF” stands next to “finance”: the peak borrowing of this world is 43'123 CHF."],
+            "48'033 CHF borrowed.": ["“48'033 CHF” stands next to “borrowed”: the peak borrowing of this world is 43'123 CHF."],
+            "Financing max. 48'033 CHF.": ["“48'033 CHF” stands next to “Financing”: the peak borrowing of this world is 43'123 CHF."],
+            "She borrows about 43'000 CHF.": ["“about 43'000 CHF” is an approximation: write the engine's figure exactly, or leave it out.",
+                                              "“43'000 CHF” stands next to “borrows”: the peak borrowing of this world is 43'123 CHF."]}
+        refused_fr = {
+            "Elle garde 2 objectifs sur 6.": ["« 2 » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Elle garde deux objectifs.": ["« deux » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Elle ne garde aucun objectif.": ["« aucun » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Elle n'en garde aucun.": ["« aucun » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Elle perd un objectif.": ["« un » est à côté de « perd » : le nombre d'objectifs perdus dans ce monde est 2."],
+            "1 objectif est perdu.": ["« 1 » est à côté de « perdu » : le nombre d'objectifs perdus dans ce monde est 2."],
+            "Elle emprunte jusqu'à 48'033 CHF.": ["« 48'033 CHF » est à côté de « emprunte » : l'emprunt maximal de ce monde est 43'123 CHF."],
+            "Un emprunt maximal de 48'033 CHF.": ["« 48'033 CHF » est à côté de « emprunt » : l'emprunt maximal de ce monde est 43'123 CHF."],
+            "Jusqu'à 48'033 CHF à financer.": ["« 48'033 CHF » est à côté de « financer » : l'emprunt maximal de ce monde est 43'123 CHF."],
+            "financement max. 48'033 CHF": ["« 48'033 CHF » est à côté de « financement » : l'emprunt maximal de ce monde est 43'123 CHF."]}
+        for lang, cases in (("en", refused_en), ("fr", refused_fr)):
+            for text, messages in cases.items():
+                report = check(text, self.facts(lang), lang=lang)
+                with self.subTest(lang=lang, text=text):
+                    self.assertEqual([problem.message for problem in report.problems], messages)
+                    self.assertEqual({problem.kind for problem in report.problems} - {"approximation"}, {"role"})
+        # The same quantities in their place, and the same words with no claim on a number.
+        accepted = {"en": ("She keeps 1 goal of 6.", "She keeps 1 goal of 6 and loses 2.", "She loses 2 goals and keeps 1.", "2 goals are lost, 1 is kept.",
+                           "1 goal kept and 2 lost.", "Only 1 of the 6 goals is kept.", "2 of the 6 goals are lost.", "She keeps a goal.",
+                           "She keeps one goal.", "She loses 2 goals and keeps the rest.", "Of the 3 goals she kept with no shock, she loses 2.",
+                           "She loses her job at 27 and keeps working until 28.", "She keeps her job for 12 months.", "She loses 12 months of income.",
+                           "She borrows up to 43'123 CHF.", "Peak borrowing: 43'123 CHF.", "Up to 43'123 CHF to finance.",
+                           "She borrows 43'123 CHF and ends with 48'033 CHF.", "She ends with 48'033 CHF after borrowing.",
+                           "She needs 39'366 CHF to finance her career change.", "To finance her career change, she needs 39'366 CHF.",
+                           "Her financial position at 28: −5'145 CHF."),
+                    "fr": ("Elle garde 1 objectif sur 6 et en perd 2.", "Elle ne garde qu'un objectif.", "Elle garde un objectif.",
+                           "Elle perd 2 objectifs et en garde 1.", "2 objectifs sont perdus, 1 est gardé.", "Elle perd son emploi à 27 ans.",
+                           "Elle perd 12 mois de salaire.", "Elle emprunte jusqu'à 43'123 CHF.", "financement max. 43'123 CHF",
+                           "Il lui faut 39'366 CHF pour financer sa reconversion.")}
+        for lang, texts in accepted.items():
+            for text in texts:
+                with self.subTest(lang=lang, text=text):
+                    report = check(text, self.facts(lang), lang=lang)
+                    self.assertTrue(report.ok, report.feedback())
+        # Without a fact that carries the role, nothing can be said about the place of a number: the text passes on presence.
+        plain = [Fact.count(1, "Goals kept", WORLD), Fact.count(2, "Goals lost", WORLD)]
+        self.assertTrue(check("She keeps 2 goals.", plain, lang="en").ok)
+        with self.assertRaises(ValueError):
+            Fact.count(1, "Goals kept", WORLD, "held")
+
+    def test_a_sentence_of_the_engine_copied_word_for_word_is_accepted_whole(self):
+        """A label or a sentence the engine gave as it is may hold what the checker refuses elsewhere: a twelfth, a half."""
+        tax = Quote("Income tax for the previous year (1/12)", "Line of the ledger", WORLD)
+        source = Quote("[to be verified] admin.ch, LPP. Half paid by the employer", "Source of an assumption")
+        note = Quote("No unemployment benefit: 0 months contributed out of 24, 12 are required", "Note of the ledger", WORLD)
+        given = self.facts("en") + [tax, source, note]
+        for text in ("The ledger shows “Income tax for the previous year (1/12)” every month.",
+                     "Every month the ledger shows income tax for the previous year (1/12).",
+                     f"The ledger shows Income{NBSP}tax for the previous year (1/12).",
+                     "Its source: [to be verified] admin.ch, LPP. Half paid by the employer.",
+                     "At 27 the ledger says: no unemployment benefit: 0 months contributed out of 24, 12 are required."):
+            with self.subTest(text=text):
+                self.assertTrue(check(text, given, lang="en").ok, check(text, given, lang="en").feedback())
+        # The figures of a copied sentence are the engine's: they are counted, with the sentence as their origin.
+        report = check("At 27 the ledger says: no unemployment benefit: 0 months contributed out of 24, 12 are required.", [Fact.age(27, "Start"), note], lang="en")
+        self.assertEqual([(figure.text, figure.origins) for figure in report.figures],
+                         [("27", ("Start",)), ("0 months", ("Note of the ledger",)), ("24", ("Note of the ledger",)), ("12", ("Note of the ledger",))])
+        # One word changed, or one part left out, and it is an ordinary text again.
+        for text, kind in (("The ledger shows income tax for last year (1/12).", "ratio"), ("Half paid by the employer.", "ratio"),
+                           ("Income tax for the previous year (1/12) and a third of it.", "ratio"),
+                           ("Income tax for the previous year (1/120).", "ratio")):
+            with self.subTest(text=text):
+                self.assertEqual([problem.kind for problem in check(text, given, lang="en").problems], [kind])
+        # Without the quote among the facts, the same words are refused.
+        self.assertEqual([problem.kind for problem in check("Income tax for the previous year (1/12).", self.facts("en"), lang="en").problems], ["ratio"])
+        french = [Quote("Impôt de l'année précédente (1/12)", "Ligne du registre"), Quote("[à vérifier] admin.ch, LPP. Moitié employeur", "Source")]
+        self.assertTrue(check("Le registre montre « Impôt de l’année précédente (1/12) » chaque mois.", french, lang="fr").ok)
+        self.assertFalse(check("Moitié employeur.", french, lang="fr").ok)
+        # A word this project never writes stays refused, even in a quote; and a number alone is not a quote.
+        self.assertEqual([problem.kind for problem in check("The best line of the ledger.", [Quote("The best line of the ledger", "nowhere")], lang="en").problems],
+                         ["banned"])
+        with self.assertRaises(ValueError):
+            Quote("1/12", "nowhere")
+
+    def test_the_limit_that_remains_a_true_figure_in_a_wrong_sentence_passes(self):
+        """What the checker does not do. Outside the three quantities whose role is checked, it does not judge the words
+        around a figure. 43'123 CHF is what Alexia borrows at most in this world, not her net worth: the sentence is
+        false, and it passes. So does a false count next to a verb the checker does not know."""
+        for text in ("At 28 her net worth is 43'123 CHF.", "She holds 2 goals of 6.", "At 27 she has −5'145 CHF set aside."):
+            with self.subTest(text=text):
+                self.assertTrue(check(text, self.facts("en"), lang="en").ok)
 
     @unittest.skipIf(TestClient is None, "FastAPI is not installed")
     def test_every_sentence_the_engine_computes_can_be_copied_as_it_is(self):
@@ -406,11 +506,19 @@ class Checking(unittest.TestCase):
                 with self.subTest(lang=lang, sentence=sentence[:80]):
                     if sentence in known[lang]:
                         self.assertEqual([(problem.kind, problem.text) for problem in reading.problems], [("ratio", "1/12")])
+                        self.assertTrue(check(sentence, [Quote(sentence, "Line of the ledger")], lang=lang).ok, "Given as a quote, it is accepted")
                     else:
                         self.assertEqual(reading.problems, ())
                         self.assertTrue(check(sentence, facts_in(sentence, "the engine", lang=lang), identifiers=reading.identifiers, lang=lang).ok)
             self.assertGreater(len(sentences), 80)
             self.assertGreater(read_in_all, 60)
+            # The labels and the sources of the assumptions state halves, twelfths and roundings. Read as ordinary text,
+            # four of them are refused; given as quotes and copied word for word, every one of them is accepted.
+            sources = sorted(set(test_english.strings(client.get(f"/assumptions?lang={lang}").json())))
+            self.assertEqual(sum(bool(read(source, lang).problems) for source in sources), 4)
+            for source in sources:
+                with self.subTest(lang=lang, source=source[:80]):
+                    self.assertTrue(check(f"« {source} »", [Quote(source, "Source of an assumption")], lang=lang).ok)
 
 
 class TryingAgain(unittest.TestCase):
