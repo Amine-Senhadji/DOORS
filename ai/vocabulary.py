@@ -11,6 +11,7 @@ from __future__ import annotations
 from itertools import combinations
 from typing import Iterator
 
+from ai.checker import Fact
 from engine import english
 from engine import worlds as W
 from engine.assumptions import by_key
@@ -168,24 +169,43 @@ def severity_for(kind: str, said: float, unit: str, th: dict, horizon: int, age0
     return round(100 * scale)
 
 
-def stored(assumption, said: float, unit: str) -> float:
-    """The value of an assumption as the engine stores it, for a value given in Alexia's words: "5 %" is 0.05. A share is
-    stored as a share and said in percent; everything else is stored as it is said. A bare number is in the unit of the
-    drawer. `assumption`: an entry of engine.assumptions.ASSUMPTIONS, whose unit is the engine's own. `unit`: chf, eur,
-    percent, months, years, or none."""
+def readings(assumption, said: float, unit: str) -> list[float]:
+    """The values an assumption may take in the engine for what Alexia says. One, as a rule: "5 %" is 0.05, a share
+    being stored as a share and said in percent, and everything else is stored as it is said. A bare number is read in
+    the unit of the drawer. Two for a rate said with no unit and no larger than 1: "0.05" may be 0.05 percent, as the
+    drawer reads it, or 5 percent written as a share. The reading of the drawer comes first.
+
+    Refused, with a reason: a unit that is not the assumption's own, a value below 0, a rate above 100 percent.
+    `assumption`: an entry of engine.assumptions.ASSUMPTIONS, whose unit is the engine's own. `unit`: chf, eur, percent,
+    months, years, or none."""
     family = ("percent" if assumption.unit.startswith("%") else "chf" if assumption.unit.startswith("CHF") else "eur"
               if assumption.unit.startswith("EUR") else "months" if assumption.unit.startswith("mois") else "years"
               if assumption.unit.startswith("ans") else "none")
     if not countable(said):
         raise ValueError(say("The value of an assumption is a number.", "La valeur d'une hypothèse est un nombre."))
+    shown = by_key()[assumption.key]                                    # its label and its unit, in the language of the screen
     if unit not in (family, "none"):
-        shown = by_key()[assumption.key]                                # its label and its unit, in the language of the screen
         names = {"percent": say("percent", "pour cent"), "chf": say("francs", "francs"), "eur": say("euros", "euros"),
                  "months": say("months", "mois"), "years": say("years", "ans")}
         # Only a unit of the form is named: a text that is not one of them is not written back.
         other = say(f", not in {names[unit]}", f", pas en {names[unit]}") if isinstance(unit, str) and unit in names else ""
         raise ValueError(say(f"“{shown.label}” is counted in {shown.unit}{other}.", f"« {shown.label} » se compte en {shown.unit}{other}."))
-    return said / 100 if family == "percent" else float(said)
+    if family == "percent":
+        if not 0 <= said <= 100:
+            written = Fact.percent(said, "").written()
+            raise ValueError(say(f"“{shown.label}” can be set from 0 to 100%: {written} is refused.",
+                                 f"« {shown.label} » se règle de 0 à 100 % : {written} est refusé."))
+        return [said / 100, float(said)] if unit == "none" and 0 < said <= 1 else [said / 100]
+    if said < 0:
+        written = Fact.number(said, "").written()
+        raise ValueError(say(f"“{shown.label}” cannot be set below 0: {written} is refused.",
+                             f"« {shown.label} » ne se règle pas en dessous de 0 : {written} est refusé."))
+    return [float(said)]
+
+
+def stored(assumption, said: float, unit: str) -> float:
+    """The value of an assumption as the engine stores it, for a value given in Alexia's words: the first of its readings."""
+    return readings(assumption, said, unit)[0]
 
 
 def describe(th: dict, horizon: int, age0: int) -> dict:

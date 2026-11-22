@@ -63,8 +63,9 @@ with its unit. Types:
 {crises}
 When she gives no age or no size, use null, and "none" for the unit: the engine has a usual age and a usual size.
 
-assumptions: values of the engine she wants to change. For each one: the key, the value as she says it, and its unit. Keys, \
-with the value the engine starts from:
+assumptions: values of the engine she wants to change. For each one: the key, the value as she says it, and its unit. The \
+unit is the one she says, and "none" when she gives a bare number: do not guess one. Keys, with the value the engine starts \
+from:
 {assumptions}
 
 savings: what she really has set aside at an age: the age, and the amount in CHF.
@@ -356,13 +357,19 @@ class _Reading:
                 key, said, unit = entry.get("key"), entry.get("value"), entry.get("unit") or "none"
                 if not isinstance(key, str) or key not in engine:
                     raise ValueError(say("The engine has no such assumption.", "Le moteur n'a pas cette hypothèse."))
-                value, now = V.stored(engine[key], said, unit), self.th.get(key, engine[key].value)
-                share = engine[key].unit.startswith("%")
+                values, now = V.readings(engine[key], said, unit), self.th.get(key, engine[key].value)
+                value, share = values[0], engine[key].unit.startswith("%")
+                rate = lambda stored: _sized(_shown(engine[key], stored), "percent")
+                # A rate with no unit and no larger than 1 has two readings. The drawer's is applied, and both are shown.
+                readings = [{"value": stored, "shown": _shown(engine[key], stored), "written": rate(stored)} for stored in values] if len(values) > 1 else None
                 items.append({"key": key, "label": labels[key].label, "unit": labels[key].unit, "value": value, "shown": _shown(engine[key], value),
                               "before": now, "before_shown": _shown(engine[key], now), "original": engine[key].value,
                               "unchanged": math.isclose(value, now, rel_tol=1e-12, abs_tol=1e-12),
-                              "conversion": say(f"{_sized(said, 'percent')} is stored as {_number(value)}.",
-                                                f"{_sized(said, 'percent')} est enregistré comme {_number(value)}.") if share else None,
+                              "conversion": say(f"{rate(value)} is stored as {_number(value)}.",
+                                                f"{rate(value)} est enregistré comme {_number(value)}.") if share else None,
+                              "to_check": readings is not None, "readings": readings,
+                              "reading": say(f"No unit: read as {rate(values[0])}. It could also be {rate(values[1])}.",
+                                             f"Sans unité : lu comme {rate(values[0])}. Cela pourrait aussi être {rate(values[1])}.") if readings else None,
                               "quote": self.quote(entry.get("quote")), "inferred": self.inferred(value=said)})
                 if not items[-1]["unchanged"]:
                     changed[key] = value

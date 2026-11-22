@@ -12,6 +12,7 @@ from pathlib import Path
 from ai import ask as A
 from ai import vocabulary as V
 from ai.model import Reply, Scripted, answers, says
+from engine import english as names
 from engine import i18n
 from engine import worlds as W
 from engine.assumptions import ASSUMPTIONS
@@ -36,6 +37,7 @@ NOTHING = {"path": None, "world": None, "assumptions": None, "observation": None
 NO_CRISIS = ("The engine has no such crisis. Crises: Market crash, Six months of unemployment, Student job lost, Inflation surge, Housing downturn, "
              "Weaker franc, Long unemployment.")
 NO_BLOCK = "The engine has no such block. Blocks: Job in Lausanne, Job in Berlin, Master's, Master's while working."
+MINUS = chr(0x2212)                 # the minus sign as the screen writes it
 
 
 def asking(sentence: str, lang: str = "en", path=STORY, overrides=None, **filled):
@@ -110,6 +112,53 @@ class TheConversions(unittest.TestCase):
             V.stored(engine["loyer"], 5, "percent")
         self.assertEqual(str(refusal.exception), "“Rent” is counted in CHF/month, not in percent.")
 
+    def test_a_value_below_zero_or_a_rate_above_100_percent_is_refused(self):
+        """The engine takes any number for an assumption. What Alexia says in a sentence is held to what can make sense."""
+        engine = {a.key: a for a in ASSUMPTIONS}
+        below, outside = "“{label}” cannot be set below 0: {said} is refused.", "“{label}” can be set from 0 to 100%: {said} is refused."
+        refused = (("loyer", -500, "chf", below, MINUS + "500"), ("loyer", -0.01, "none", below, MINUS + "0.01"),
+                   ("salaire_etranger_eur", -1, "eur", below, MINUS + "1"), ("etudes_age", -3, "years", below, MINUS + "3"),
+                   ("chomage_long_mois", -6, "months", below, MINUS + "6"),
+                   ("rendement_placements_annuel", 150, "percent", outside, "150%"), ("rendement_placements_annuel", 100.5, "none", outside, "100.5%"),
+                   ("rendement_placements_annuel", -2, "percent", outside, MINUS + "2%"),
+                   ("hausse_prix_logement_annuelle", -1, "none", outside, MINUS + "1%"), ("part_epargne_placee", 120, "percent", outside, "120%"))
+        with i18n.use("en"):
+            for key, said, unit, why, written in refused:
+                with self.subTest(key=key, said=said), self.assertRaises(ValueError) as refusal:
+                    V.readings(engine[key], said, unit)
+                self.assertEqual(str(refusal.exception), why.format(label=names.ASSUMPTIONS[key][0], said=written))
+            with self.assertRaises(ValueError) as refusal:
+                V.readings(engine["loyer"], -500, "chf")
+            self.assertEqual(str(refusal.exception), "“Rent” cannot be set below 0: " + MINUS + "500 is refused.")
+        with i18n.use("fr"):
+            for key, said, unit, why in (("loyer", -500, "chf", "« Loyer » ne se règle pas en dessous de 0 : MINUS500 est refusé."),
+                                         ("rendement_placements_annuel", 150, "percent",
+                                          "« Rendement des placements (monde de référence) » se règle de 0 à 100 % : 150 % est refusé.")):
+                with self.subTest(key=key, said=said), self.assertRaises(ValueError) as refusal:
+                    V.readings(engine[key], said, unit)
+                self.assertEqual(str(refusal.exception), why.replace("MINUS", MINUS))
+        # The edges are accepted, and no value the engine starts from is refused.
+        for key, said, unit, stored in (("loyer", 0, "chf", 0.0), ("taux_interet_cash", 0, "percent", 0.0), ("part_epargne_placee", 100, "percent", 1.0),
+                                        ("part_epargne_placee", 100, "none", 1.0)):
+            self.assertEqual(V.readings(engine[key], said, unit), [stored])
+        for assumption in ASSUMPTIONS:
+            typed = round(assumption.value * 100, 6) if assumption.unit.startswith("%") else assumption.value
+            self.assertTrue(V.readings(assumption, typed, "none"), assumption.key)
+
+    def test_a_rate_with_no_unit_and_no_larger_than_1_has_two_readings(self):
+        engine = {a.key: a for a in ASSUMPTIONS}
+        rate = engine["rendement_placements_annuel"]
+        # "0.05": 0.05 percent as the drawer reads it, first, or 5 percent written as a share.
+        self.assertEqual(V.readings(rate, 0.05, "none"), [0.0005, 0.05])
+        self.assertEqual(V.readings(rate, 1, "none"), [0.01, 1.0])
+        self.assertEqual(V.stored(rate, 0.05, "none"), 0.0005)
+        # One reading: the unit is said, the number is above 1 (5 as a share would be 500 percent), or it is zero.
+        for said, unit, stored in ((0.05, "percent", [0.0005]), (5, "none", [0.05]), (1.5, "none", [0.015]), (0, "none", [0.0]), (100, "none", [1.0])):
+            self.assertEqual(V.readings(rate, said, unit), stored)
+        # An amount, a length or an age has one reading, with or without its unit.
+        for key, said in (("loyer", 0.5), ("fx_initial", 0.94), ("recherche_emploi_mois", 1), ("etudes_annees", 1)):
+            self.assertEqual(V.readings(engine[key], said, "none"), [float(said)])
+
 
 class TheForm(unittest.TestCase):
     """What the model is asked: one call, a form whose every choice is one the engine knows."""
@@ -164,7 +213,8 @@ class TheForm(unittest.TestCase):
                       "or in years; usually 6 months, at 22.",
                       "- krach: Market crash. Investments fall sharply, within one month. Said by its size in percent; usually 30%, at 23.",
                       "- franc_faible: Weaker franc.", "Said by the rate of the euro in francs; usually 1.05 CHF/EUR, at 21.",
-                      "Keys, with the value the engine starts from:", "- loyer: Rent [CHF/month], 900 in the engine",
+                      "The unit is the one she says, and \"none\" when she gives a bare number: do not guess one.",
+                      "Keys, with the value the engine starts \nfrom:".replace("\n", ""), "- loyer: Rent [CHF/month], 900 in the engine",
                       "- rendement_placements_annuel: Return on investments (reference world) [%/year], 3 in the engine",
                       "quote: her exact words for that field, copied from her sentence."):
             self.assertIn(words, system)
@@ -173,7 +223,7 @@ class TheForm(unittest.TestCase):
         self.assertEqual(listed("Blocks:\n", "\nGive the length"), sorted(BLOCKS))
         self.assertEqual(sorted(listed("Branches:\n", "\n\ncrises:")), sorted(A.BRANCHES))
         self.assertEqual(listed("Types:\n", "\nWhen she gives"), list(V.kinds(TH, H, AGE0)))
-        self.assertEqual(listed("the engine starts from:\n", "\n\nsavings:"), [a.key for a in ASSUMPTIONS])
+        self.assertEqual(listed("from:\n", "\n\nsavings:"), [a.key for a in ASSUMPTIONS])
         reasons = system.partition("and why:\n")[2].partition("\n\nRules")[0]
         self.assertEqual(sorted(word for line in reasons.splitlines() for word in line[2:].partition(":")[0].split(", ")), sorted(A.WHY))
         self.assertEqual(said, "Her current route\n- Job in Lausanne, from age 20 to age 25\n- Master's, from age 25 to age 27\n"
@@ -391,10 +441,10 @@ class TheAssumptionsAndTheSavings(unittest.TestCase):
                                         {"key": "rendement_placements_annuel", "value": 5, "unit": "percent", "quote": "un rendement de 5 %"}])
         self.assertEqual(result["assumptions"], [
             {"key": "loyer", "label": "Loyer", "unit": "CHF/mois", "value": 1500.0, "shown": 1500.0, "before": 900, "before_shown": 900, "original": 900,
-             "unchanged": False, "conversion": None, "quote": "un loyer à 1'500", "inferred": []},
+             "unchanged": False, "conversion": None, "to_check": False, "readings": None, "reading": None, "quote": "un loyer à 1'500", "inferred": []},
             {"key": "rendement_placements_annuel", "label": "Rendement des placements (monde de référence)", "unit": "%/an", "value": 0.05, "shown": 5.0,
              "before": 0.03, "before_shown": 3.0, "original": 0.03, "unchanged": False, "conversion": "5 % est enregistré comme 0,05.",
-             "quote": "un rendement de 5 %", "inferred": []}])
+             "to_check": False, "readings": None, "reading": None, "quote": "un rendement de 5 %", "inferred": []}])
         # What she had already changed stays; what she changes now is added.
         self.assertEqual((result["settings"]["assumptions"], result["understood"], result["changes"]),
                          ({"taxe_semestre": 580.0, "loyer": 1500.0, "rendement_placements_annuel": 0.05}, True, True))
@@ -416,6 +466,50 @@ class TheAssumptionsAndTheSavings(unittest.TestCase):
         self.assertEqual(result["refused"], [{"what": "assumption", "quote": "A magic salary", "reason": "The engine has no such assumption."},
                                              {"what": "assumption", "quote": "a rent of 5%", "reason": "“Rent” is counted in CHF/month, not in percent."},
                                              {"what": "assumption", "quote": None, "reason": "The value of an assumption is a number."}])
+
+    def test_a_value_below_zero_or_a_rate_above_100_percent_is_refused_with_a_reason_written_by_code(self):
+        result, _ = asking("A rent of -500, a return of 150%, and no tuition.",
+                           assumptions=[{"key": "loyer", "value": -500, "unit": "chf", "quote": "A rent of -500"},
+                                        {"key": "rendement_placements_annuel", "value": 150, "unit": "percent", "quote": "a return of 150%"},
+                                        {"key": "taxe_semestre", "value": 0, "unit": "chf", "quote": "no tuition"}])
+        self.assertEqual(result["refused"], [
+            {"what": "assumption", "quote": "A rent of -500", "reason": "“Rent” cannot be set below 0: MINUS500 is refused.".replace("MINUS", MINUS)},
+            {"what": "assumption", "quote": "a return of 150%", "reason": "“Return on investments (reference world)” can be set from 0 to 100%: 150% is refused."}])
+        # What is refused is not applied, and what stands beside it is: zero is a value like another.
+        self.assertEqual(([a["key"] for a in result["assumptions"]], result["settings"]["assumptions"]), (["taxe_semestre"], {"taxe_semestre": 0.0}))
+        result, _ = asking("Un loyer de -500 et un rendement de 150 %.", "fr",
+                           assumptions=[{"key": "loyer", "value": -500, "unit": "none", "quote": ""}, {"key": "rendement_placements_annuel", "value": 150, "unit": "none", "quote": ""}])
+        self.assertEqual((refusals(result), result["settings"]), ([
+            ("assumption", "« Loyer » ne se règle pas en dessous de 0 : MINUS500 est refusé.".replace("MINUS", MINUS)),
+            ("assumption", "« Rendement des placements (monde de référence) » se règle de 0 à 100 % : 150 % est refusé.")], NOTHING))
+
+    def test_a_rate_with_no_unit_is_to_check_and_the_form_shows_both_readings(self):
+        result, _ = asking("Et si le rendement était de 0,05 ?", "fr",
+                           assumptions=[{"key": "rendement_placements_annuel", "value": 0.05, "unit": "none", "quote": "le rendement était de 0,05"}])
+        self.assertEqual(result["assumptions"], [
+            {"key": "rendement_placements_annuel", "label": "Rendement des placements (monde de référence)", "unit": "%/an", "value": 0.0005, "shown": 0.05,
+             "before": 0.03, "before_shown": 3.0, "original": 0.03, "unchanged": False, "conversion": "0,05 % est enregistré comme 0,0005.",
+             "to_check": True, "readings": [{"value": 0.0005, "shown": 0.05, "written": "0,05 %"}, {"value": 0.05, "shown": 5.0, "written": "5 %"}],
+             "reading": "Sans unité : lu comme 0,05 %. Cela pourrait aussi être 5 %.", "quote": "le rendement était de 0,05", "inferred": []}])
+        # The reading of the drawer is the one applied if she changes nothing: the other one is hers to pick.
+        self.assertEqual((result["settings"]["assumptions"], result["understood"], result["changes"]), ({"rendement_placements_annuel": 0.0005}, True, True))
+        result, _ = asking("A return of 0.05, a mortgage at 1, savings invested at 0.5.",
+                           assumptions=[{"key": "rendement_placements_annuel", "value": 0.05, "unit": "none", "quote": ""},
+                                        {"key": "taux_hypotheque", "value": 1, "unit": "none", "quote": ""},
+                                        {"key": "part_epargne_placee", "value": 0.5, "unit": "none", "quote": ""}])
+        self.assertEqual([(a["to_check"], a["reading"], [reading["written"] for reading in a["readings"]]) for a in result["assumptions"]],
+                         [(True, "No unit: read as 0.05%. It could also be 5%.", ["0.05%", "5%"]),
+                          (True, "No unit: read as 1%. It could also be 100%.", ["1%", "100%"]),
+                          (True, "No unit: read as 0.5%. It could also be 50%.", ["0.5%", "50%"])])
+        # Nothing to check when there is one reading: the unit is said, the number is above 1, or the value is not a rate.
+        result, _ = asking("A return of 0.05%, a mortgage at 5, a rent of 0.5, no interest.",
+                           assumptions=[{"key": "rendement_placements_annuel", "value": 0.05, "unit": "percent", "quote": ""},
+                                        {"key": "taux_hypotheque", "value": 5, "unit": "none", "quote": ""},
+                                        {"key": "loyer", "value": 0.5, "unit": "none", "quote": ""},
+                                        {"key": "taux_decouvert", "value": 0, "unit": "none", "quote": ""}])
+        self.assertEqual([(a["key"], a["value"], a["to_check"], a["readings"], a["reading"]) for a in result["assumptions"]],
+                         [("rendement_placements_annuel", 0.0005, False, None, None), ("taux_hypotheque", 0.05, False, None, None),
+                          ("loyer", 0.5, False, None, None), ("taux_decouvert", 0.0, False, None, None)])
 
     def test_savings_at_an_age_become_savings_at_a_junction_of_the_route(self):
         result, _ = asking("At 26 I really have 40'000 CHF.", savings={"age": 26, "amount_chf": 40000, "quote": "At 26 I really have 40'000 CHF"})
