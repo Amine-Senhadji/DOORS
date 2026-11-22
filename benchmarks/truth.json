@@ -1,0 +1,1999 @@
+{
+ "scanned_on": "2026-11-22",
+ "space": {
+  "worlds": 49140,
+  "types": [
+   "krach",
+   "chomage_6_mois",
+   "perte_job_etudiant",
+   "inflation",
+   "crise_immobiliere",
+   "franc_faible",
+   "chomage_long"
+  ],
+  "ages": [
+   21,
+   29
+  ],
+  "severities": [
+   50,
+   75,
+   100,
+   125,
+   150
+  ],
+  "crises_per_world": 2
+ },
+ "routes": {
+  "story_a": {
+   "path": [
+    {
+     "block": "job",
+     "years": 5
+    },
+    {
+     "block": "master",
+     "years": 2
+    },
+    {
+     "block": "job",
+     "years": 3
+    }
+   ],
+   "worlds": 49140,
+   "calm": {
+    "goals_kept": 3,
+    "goals_total": 6
+   },
+   "max_goals_lost": 3,
+   "histogram": {
+    "0": 18296,
+    "1": 28133,
+    "2": 2664,
+    "3": 47
+   },
+   "hardest_count": 47,
+   "least_severity": 200,
+   "hardest": [
+    {
+     "world": "chomage_long@23+chomage_long@24",
+     "severity": 200,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~75",
+     "severity": 200,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 62564.76,
+     "net_worth_end_chf": 26529.38
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 77848.0,
+     "net_worth_end_chf": 9051.61
+    },
+    {
+     "world": "chomage_long@22~75+chomage_long@23~150",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 71836.6,
+     "net_worth_end_chf": 10881.32
+    },
+    {
+     "world": "chomage_long@22+chomage_long@23~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 71129.91,
+     "net_worth_end_chf": 9791.15
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~75",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 70341.45,
+     "net_worth_end_chf": 11456.72
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 68687.4,
+     "net_worth_end_chf": 9685.67
+    },
+    {
+     "world": "chomage_long@21~75+chomage_long@22~150",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65144.23,
+     "net_worth_end_chf": 11104.08
+    },
+    {
+     "world": "chomage_long@23+chomage_long@24~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@23~125+chomage_long@24",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@21+chomage_long@22~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 64609.95,
+     "net_worth_end_chf": 9898.08
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~75",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 62845.28,
+     "net_worth_end_chf": 11916.14
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 85624.68,
+     "net_worth_end_chf": -6021.05
+    },
+    {
+     "world": "chomage_long@22+chomage_long@23~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 85229.58,
+     "net_worth_end_chf": -6333.1
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 82372.66,
+     "net_worth_end_chf": -5964.66
+    },
+    {
+     "world": "chomage_long@21+chomage_long@22~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 79154.93,
+     "net_worth_end_chf": -6735.42
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 78578.02,
+     "net_worth_end_chf": -6075.67
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 77848.0,
+     "net_worth_end_chf": 9051.61
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@23~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 71129.91,
+     "net_worth_end_chf": 9791.15
+    },
+    {
+     "world": "chomage_long@23+chomage_long@24~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@23~125+chomage_long@24~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@23~150+chomage_long@24",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@22~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 64609.95,
+     "net_worth_end_chf": 9898.08
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 96472.33,
+     "net_worth_end_chf": -22088.91
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 92263.28,
+     "net_worth_end_chf": -21726.01
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 85624.68,
+     "net_worth_end_chf": -6021.05
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 85229.58,
+     "net_worth_end_chf": -6333.1
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@22~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 79154.93,
+     "net_worth_end_chf": -6735.42
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 77848.0,
+     "net_worth_end_chf": 9051.61
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 71129.91,
+     "net_worth_end_chf": 9791.15
+    },
+    {
+     "world": "chomage_6_mois@22~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 67428.31,
+     "net_worth_end_chf": 16558.5
+    },
+    {
+     "world": "chomage_long@22~150+chomage_6_mois@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65803.97,
+     "net_worth_end_chf": 16645.73
+    },
+    {
+     "world": "chomage_long@23~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@23~150+chomage_long@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 65024.31,
+     "net_worth_end_chf": 24451.71
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@22~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 64609.95,
+     "net_worth_end_chf": 9898.08
+    },
+    {
+     "world": "chomage_long@22~125+chomage_6_mois@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 62564.76,
+     "net_worth_end_chf": 26529.38
+    },
+    {
+     "world": "chomage_6_mois@21~125+chomage_long@22~150",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 60532.4,
+     "net_worth_end_chf": 16986.78
+    },
+    {
+     "world": "chomage_long@21~150+chomage_6_mois@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 57561.66,
+     "net_worth_end_chf": 17958.44
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 106362.95,
+     "net_worth_end_chf": -37850.26
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 0,
+     "goals_total": 6,
+     "goals_lost": [
+      "coussin",
+      "reconversion",
+      "resilience"
+     ],
+     "peak_financing_chf": 85624.68,
+     "net_worth_end_chf": -6021.05
+    }
+   ],
+   "seconds": 128.7,
+   "single_crises": {
+    "worlds": 315,
+    "max_goals_lost": 2,
+    "hardest_count": 4,
+    "least_severity": 100,
+    "hardest": [
+     {
+      "world": "chomage_long@27",
+      "severity": 100,
+      "types": [
+       "chomage_long"
+      ],
+      "goals_kept": 1,
+      "goals_total": 6,
+      "goals_lost": [
+       "reconversion",
+       "resilience"
+      ],
+      "peak_financing_chf": 43123.47,
+      "net_worth_end_chf": 48033.45
+     }
+    ]
+   }
+  },
+  "work_only": {
+   "path": [
+    {
+     "block": "job",
+     "years": 10
+    }
+   ],
+   "worlds": 49140,
+   "calm": {
+    "goals_kept": 6,
+    "goals_total": 6
+   },
+   "max_goals_lost": 5,
+   "histogram": {
+    "0": 13972,
+    "1": 33302,
+    "2": 1379,
+    "3": 421,
+    "4": 45,
+    "5": 21
+   },
+   "hardest_count": 21,
+   "least_severity": 250,
+   "hardest": [
+    {
+     "world": "chomage_long@21+chomage_long@22~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 42443.4,
+     "net_worth_end_chf": 82468.89
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 36216.18,
+     "net_worth_end_chf": 83656.32
+    },
+    {
+     "world": "chomage_long@22+chomage_long@23~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 35866.26,
+     "net_worth_end_chf": 83653.96
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 35290.26,
+     "net_worth_end_chf": 83025.96
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 31238.19,
+     "net_worth_end_chf": 84352.27
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 28900.48,
+     "net_worth_end_chf": 84030.7
+    },
+    {
+     "world": "chomage_long@23+chomage_long@24~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 28884.06,
+     "net_worth_end_chf": 83892.37
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 45697.35,
+     "net_worth_end_chf": 69192.13
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 44760.07,
+     "net_worth_end_chf": 69103.34
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@22~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 42443.4,
+     "net_worth_end_chf": 82468.89
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 40658.27,
+     "net_worth_end_chf": 69738.38
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 38291.87,
+     "net_worth_end_chf": 70083.77
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 35866.26,
+     "net_worth_end_chf": 83653.96
+    },
+    {
+     "world": "chomage_long@23~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 28884.06,
+     "net_worth_end_chf": 83892.37
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 54346.09,
+     "net_worth_end_chf": 54303.09
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 47798.51,
+     "net_worth_end_chf": 55232.76
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@22~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 42443.4,
+     "net_worth_end_chf": 82468.89
+    },
+    {
+     "world": "chomage_long@24~150+chomage_long@26~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "etudes",
+      "reconversion",
+      "resilience",
+      "logement"
+     ],
+     "peak_financing_chf": 36345.16,
+     "net_worth_end_chf": 54751.25
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@23~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 35866.26,
+     "net_worth_end_chf": 83653.96
+    },
+    {
+     "world": "chomage_long@23~150+chomage_long@24~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion",
+      "logement"
+     ],
+     "peak_financing_chf": 28884.06,
+     "net_worth_end_chf": 83892.37
+    },
+    {
+     "world": "chomage_long@25~150+chomage_long@27~150",
+     "severity": 300,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "etudes",
+      "reconversion",
+      "resilience",
+      "logement"
+     ],
+     "peak_financing_chf": 28206.47,
+     "net_worth_end_chf": 53511.25
+    }
+   ],
+   "seconds": 136.4,
+   "single_crises": {
+    "worlds": 315,
+    "max_goals_lost": 3,
+    "hardest_count": 1,
+    "least_severity": 150,
+    "hardest": [
+     {
+      "world": "chomage_long@21~150",
+      "severity": 150,
+      "types": [
+       "chomage_long"
+      ],
+      "goals_kept": 3,
+      "goals_total": 6,
+      "goals_lost": [
+       "jamais_rouge",
+       "etudes",
+       "logement"
+      ],
+      "peak_financing_chf": 4347.04,
+      "net_worth_end_chf": 138782.42
+     }
+    ]
+   }
+  },
+  "berlin": {
+   "path": [
+    {
+     "block": "job_abroad",
+     "years": 10
+    }
+   ],
+   "worlds": 49140,
+   "calm": {
+    "goals_kept": 5,
+    "goals_total": 6
+   },
+   "max_goals_lost": 4,
+   "histogram": {
+    "0": 37841,
+    "1": 8107,
+    "2": 2877,
+    "3": 262,
+    "4": 53
+   },
+   "hardest_count": 53,
+   "least_severity": 225,
+   "hardest": [
+    {
+     "world": "chomage_long@21+chomage_long@22~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 27415.42,
+     "net_worth_end_chf": 66150.58
+    },
+    {
+     "world": "chomage_long@21~75+chomage_long@22~150",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 24445.99,
+     "net_worth_end_chf": 67610.77
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~75",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 21752.93,
+     "net_worth_end_chf": 68591.58
+    },
+    {
+     "world": "chomage_long@22+chomage_long@23~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 20934.01,
+     "net_worth_end_chf": 70726.25
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 18695.63,
+     "net_worth_end_chf": 69966.99
+    },
+    {
+     "world": "chomage_long@22~75+chomage_long@23~150",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 17727.95,
+     "net_worth_end_chf": 71940.12
+    },
+    {
+     "world": "chomage_long@21+chomage_long@23~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 15387.02,
+     "net_worth_end_chf": 71335.84
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~75",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 14646.48,
+     "net_worth_end_chf": 72887.29
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@24~75",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 14523.6,
+     "net_worth_end_chf": 70467.61
+    },
+    {
+     "world": "chomage_long@21~75+chomage_long@23~150",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 12046.13,
+     "net_worth_end_chf": 72637.01
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@24",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 10299.93,
+     "net_worth_end_chf": 72014.69
+    },
+    {
+     "world": "chomage_long@21+chomage_long@24~125",
+     "severity": 225,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 6127.46,
+     "net_worth_end_chf": 73490.1
+    },
+    {
+     "world": "chomage_long@21+chomage_long@22~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 31756.37,
+     "net_worth_end_chf": 57572.23
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@22~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 27415.42,
+     "net_worth_end_chf": 66150.58
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 26024.39,
+     "net_worth_end_chf": 60145.75
+    },
+    {
+     "world": "chomage_long@22+chomage_long@23~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 25100.81,
+     "net_worth_end_chf": 62297.9
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 22834.95,
+     "net_worth_end_chf": 61475.9
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@23~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 20934.01,
+     "net_worth_end_chf": 70726.25
+    },
+    {
+     "world": "chomage_long@21+chomage_long@23~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 19485.74,
+     "net_worth_end_chf": 62907.5
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 18736.11,
+     "net_worth_end_chf": 64582.18
+    },
+    {
+     "world": "chomage_long@23+chomage_long@24~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 18049.53,
+     "net_worth_end_chf": 66005.29
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 15229.14,
+     "net_worth_end_chf": 65738.4
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@24",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 14523.6,
+     "net_worth_end_chf": 63258.61
+    },
+    {
+     "world": "chomage_long@22+chomage_long@24~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 11563.91,
+     "net_worth_end_chf": 66981.01
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@24~125",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 10434.39,
+     "net_worth_end_chf": 64661.52
+    },
+    {
+     "world": "chomage_long@21+chomage_long@24~150",
+     "severity": 250,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 6728.84,
+     "net_worth_end_chf": 66136.92
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@22~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 31756.37,
+     "net_worth_end_chf": 57572.23
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 30253.66,
+     "net_worth_end_chf": 51654.66
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@22~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 27415.42,
+     "net_worth_end_chf": 66150.58
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 27025.08,
+     "net_worth_end_chf": 53047.55
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@23~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 25100.81,
+     "net_worth_end_chf": 62297.9
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 22779.42,
+     "net_worth_end_chf": 56218.94
+    },
+    {
+     "world": "chomage_6_mois@21~125+chomage_long@22~150",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 22002.27,
+     "net_worth_end_chf": 70966.46
+    },
+    {
+     "world": "chomage_long@22~150+chomage_long@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 20934.01,
+     "net_worth_end_chf": 70726.25
+    },
+    {
+     "world": "chomage_long@21~150+chomage_6_mois@23~125",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 20340.64,
+     "net_worth_end_chf": 71421.46
+    },
+    {
+     "world": "chomage_long@22~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 19229.41,
+     "net_worth_end_chf": 57433.46
+    },
+    {
+     "world": "chomage_long@23~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 18049.53,
+     "net_worth_end_chf": 66005.29
+    },
+    {
+     "world": "chomage_long@21~150+chomage_long@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 17968.81,
+     "net_worth_end_chf": 55550.41
+    },
+    {
+     "world": "chomage_long@21~150+chomage_6_mois@24~125",
+     "severity": 275,
+     "types": [
+      "chomage_6_mois",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 14523.6,
+     "net_worth_end_chf": 72870.61
+    },
+    {
+     "world": "chomage_long@21~125+chomage_long@24~150",
+     "severity": 275,
+     "types": [
+      "chomage_long",
+      "chomage_long"
+     ],
+     "goals_kept": 1,
+     "goals_total": 6,
+     "goals_lost": [
+      "jamais_rouge",
+      "coussin",
+      "etudes",
+      "reconversion"
+     ],
+     "peak_financing_chf": 14382.84,
+     "net_worth_end_chf": 56736.18
+    }
+   ],
+   "seconds": 111.7,
+   "single_crises": {
+    "worlds": 315,
+    "max_goals_lost": 2,
+    "hardest_count": 10,
+    "least_severity": 75,
+    "hardest": [
+     {
+      "world": "chomage_long@21~75",
+      "severity": 75,
+      "types": [
+       "chomage_long"
+      ],
+      "goals_kept": 3,
+      "goals_total": 6,
+      "goals_lost": [
+       "jamais_rouge",
+       "etudes"
+      ],
+      "peak_financing_chf": 1915.73,
+      "net_worth_end_chf": 118489.18
+     },
+     {
+      "world": "chomage_6_mois@21~125",
+      "severity": 125,
+      "types": [
+       "chomage_6_mois"
+      ],
+      "goals_kept": 3,
+      "goals_total": 6,
+      "goals_lost": [
+       "jamais_rouge",
+       "etudes"
+      ],
+      "peak_financing_chf": 523.2,
+      "net_worth_end_chf": 121442.64
+     }
+    ]
+   }
+  }
+ }
+}
