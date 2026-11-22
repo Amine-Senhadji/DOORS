@@ -395,6 +395,8 @@ class Checking(unittest.TestCase):
             "2 goals are kept.": ["“2” stands next to “kept”: the number of goals kept in this world is 1."],
             "She keeps no goal.": ["“no” stands next to “keeps”: the number of goals kept in this world is 1."],
             "She keeps none of the 6 goals.": ["“none” stands next to “keeps”: the number of goals kept in this world is 1."],
+            "You keep none of your 6 goals.": ["“none” stands next to “keep”: the number of goals kept in this world is 1."],
+            "You keep 2 of your 6 goals.": ["“2” stands next to “keep”: the number of goals kept in this world is 1."],
             "She loses a goal.": ["“a” stands next to “loses”: the number of goals lost in this world is 2."],
             "She has lost 1 goal.": ["“1” stands next to “lost”: the number of goals lost in this world is 2."],
             "She borrows up to 48'033 CHF.": ["“48'033 CHF” stands next to “borrows”: the peak borrowing of this world is 43'123 CHF."],
@@ -409,6 +411,8 @@ class Checking(unittest.TestCase):
             "Elle garde deux objectifs.": ["« deux » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
             "Elle ne garde aucun objectif.": ["« aucun » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
             "Elle n'en garde aucun.": ["« aucun » est à côté de « garde » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Tu ne gardes aucun de tes 6 objectifs.": ["« aucun » est à côté de « gardes » : le nombre d'objectifs gardés dans ce monde est 1."],
+            "Tu gardes 2 de tes 6 objectifs.": ["« 2 » est à côté de « gardes » : le nombre d'objectifs gardés dans ce monde est 1."],
             "Elle perd un objectif.": ["« un » est à côté de « perd » : le nombre d'objectifs perdus dans ce monde est 2."],
             "1 objectif est perdu.": ["« 1 » est à côté de « perdu » : le nombre d'objectifs perdus dans ce monde est 2."],
             "Elle emprunte jusqu'à 48'033 CHF.": ["« 48'033 CHF » est à côté de « emprunte » : l'emprunt maximal de ce monde est 43'123 CHF."],
@@ -429,11 +433,13 @@ class Checking(unittest.TestCase):
                            "She borrows up to 43'123 CHF.", "Peak borrowing: 43'123 CHF.", "Up to 43'123 CHF to finance.",
                            "She borrows 43'123 CHF and ends with 48'033 CHF.", "She ends with 48'033 CHF after borrowing.",
                            "She needs 39'366 CHF to finance her career change.", "To finance her career change, she needs 39'366 CHF.",
-                           "Her financial position at 28: −5'145 CHF."),
+                           "Her financial position at 28: −5'145 CHF.", "You keep 1 of your 6 goals and lose 2 of them.",
+                           "Of your 3 goals you keep one, and you lose 2 goals."),
                     "fr": ("Elle garde 1 objectif sur 6 et en perd 2.", "Elle ne garde qu'un objectif.", "Elle garde un objectif.",
                            "Elle perd 2 objectifs et en garde 1.", "2 objectifs sont perdus, 1 est gardé.", "Elle perd son emploi à 27 ans.",
                            "Elle perd 12 mois de salaire.", "Elle emprunte jusqu'à 43'123 CHF.", "financement max. 43'123 CHF",
-                           "Il lui faut 39'366 CHF pour financer sa reconversion.")}
+                           "Il lui faut 39'366 CHF pour financer sa reconversion.", "Tu gardes 1 de tes 6 objectifs et tu en perds 2.",
+                           "Tu ne gardes qu'un de tes 6 objectifs.")}
         for lang, texts in accepted.items():
             for text in texts:
                 with self.subTest(lang=lang, text=text):

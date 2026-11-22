@@ -224,7 +224,8 @@ _UNITS_OF = {"chf": ("chf",), "pp": ("points",), "percent": ("percent",), "month
 _TIMES_AFTER = re.compile(r" (?:times|fois)\b", re.IGNORECASE)          # "twenty times": a ratio, whatever the number
 # "2 of 6", "2 out of 6", "2 sur 6", "2 des 6": both numbers are counts.
 _OF_AFTER = re.compile(r" (?:out of|of|sur|des|d'entre)\b", re.IGNORECASE)
-_OF_BEFORE = re.compile(r"\b(?:out of|of|sur|des|d'entre)\s+(?:the\s+|les\s+)?$", re.IGNORECASE)
+_THE = {"en": "the|her|its|your|my|their|these|those", "fr": "les|ses|ces|tes|mes|vos|nos|leurs"}          # what may stand before a number of goals: "the 6", "your 6", "tes 6"
+_OF_BEFORE = re.compile(rf"\b(?:out of|of|sur|des|d'entre|de)\s+(?:(?:{_THE['en']}|{_THE['fr']})\s+)?$", re.IGNORECASE)
 _CHF_BEFORE = re.compile(r"\bCHF ?$", re.IGNORECASE)
 
 
@@ -264,11 +265,11 @@ _GOALS = {"en": r"(?:goals?|stations?|doors?|worlds?|crises|crisis|junctions?|br
           "fr": r"(?:objectifs?|stations?|portes?|mondes?|crises?|gares?|branches?)"}
 _FEW = {"en": r"(?:\d|(?:two|three|four|five|six|seven|eight|nine|ten)\b)", "fr": r"(?:\d|(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\b)"}
 _ONE = {"en": re.compile(rf"(?<![\w-])(?:one|an?)(?=[ -](?:(?:full|whole|more|extra|additional|further|long) )?(?:year|month)s?\b)"
-                         rf"|(?<![\w-])one(?= (?:{_GOALS['en']} )?(?:out of|of|in) (?:the |her |its )?(?:{_FEW['en']}|{_GOALS['en']}\b))"
+                         rf"|(?<![\w-])one(?= (?:{_GOALS['en']} )?(?:out of|of|in) (?:(?:{_THE['en']}) )?(?:{_FEW['en']}|{_GOALS['en']}\b))"
                          rf"|(?<![\w-])one(?= {_GOALS['en']}\b)", re.IGNORECASE),
         "fr": re.compile(rf"(?<![\w-])une?(?=[ -](?:(?:seule?|longue?|petite?) )?(?:an|mois|année)\b)"
-                         rf"|(?<![\w-])une?(?= (?:seule? )?(?:{_GOALS['fr']} )?sur (?:les |ses )?{_FEW['fr']})"
-                         rf"|(?<![\w-])une?(?= (?:des|d'entre) (?:les |ses )?(?:{_FEW['fr']} )?{_GOALS['fr']}\b)", re.IGNORECASE)}
+                         rf"|(?<![\w-])une?(?= (?:seule? )?(?:{_GOALS['fr']} )?sur (?:(?:{_THE['fr']}) )?{_FEW['fr']})"
+                         rf"|(?<![\w-])une?(?= (?:des|d'entre|de) (?:(?:{_THE['fr']}) )?(?:{_FEW['fr']} )?{_GOALS['fr']}\b)", re.IGNORECASE)}
 
 
 # The three quantities whose role is checked. A number of goals next to "keep" must be the number of goals kept in
@@ -279,16 +280,16 @@ _ROLE_WORDS = {
     "borrowed": re.compile(r"\bborrow\w*|\bemprunt\w*|\bfinanc(?:e[sd]?|ing|ent|é(?:e|s|es)?|er|ements?)\b", re.IGNORECASE),
 }
 # "2 goals", "2 of the 6 goals", "2 des 6 objectifs": what makes a count a number of goals.
-_GOALS_AFTER = {"en": re.compile(r"(?: (?:out of|of)(?: the| her| its)?(?: \w+)?)?(?: (?:other|more|tested|single))? (?:goals?|stations?|doors?)\b",
+_GOALS_AFTER = {"en": re.compile(rf"(?: (?:out of|of)(?: (?:{_THE['en']}))?(?: \w+)?)?(?: (?:other|more|tested|single))? (?:goals?|stations?|doors?)\b",
                                  re.IGNORECASE),
-                "fr": re.compile(r"(?: (?:des|sur|de ses|de ces|d'entre)(?: les| ses)?(?: \w+)?)?(?: (?:autres?|seule?s?))? (?:objectifs?|stations?|portes?)\b",
+                "fr": re.compile(rf"(?: (?:des|sur|de|d'entre)(?: (?:{_THE['fr']}))?(?: \w+)?)?(?: (?:autres?|seule?s?))? (?:objectifs?|stations?|portes?)\b",
                                  re.IGNORECASE)}
 # "of the 6", "sur 6", "de ses 3": the whole a part is taken from. It is never the number kept or lost.
-_PART_OF = re.compile(r"\b(?:out of|of|sur|des|d'entre|de)\s+(?:(?:the|her|its|les|ses|ces)\s+)?$", re.IGNORECASE)
+_PART_OF = _OF_BEFORE
 # What ends a clause: a number and a word on either side of it do not belong together. "max." does not end one.
 _BREAK = re.compile(r"[;!?\n(),]|\s[–—-]\s|\.(?=\s+[^\W\d_a-zà-ÿ]|\s*$)")
-_SMALL = frozenset("only just exactly still all her the its a are is were was be been being have has had will would "
-                   "que qu seulement encore toujours exactement ses les sont est ont été sera seront plus en ne n".split())
+_SMALL = frozenset("only just exactly still all her the its your my a are is were was be been being have has had will would "
+                   "que qu seulement encore toujours exactement ses les tes mes sont est ont été sera seront plus en ne n".split())
 # The words that may stand between a number and the word that names it, when the number comes first: "2 goals are lost".
 _LINK = {"kept": frozenset("are is were was be been being have has had still she that which sont est ont a été encore toujours elle qu que".split()),
          "borrowed": frozenset("to of in are is were was be been à a de d en sont est été".split())}
@@ -296,10 +297,10 @@ _LINK["lost"] = _LINK["kept"]
 # After "keep" or "lose", "a goal", "no goal", "un objectif", "aucun objectif" state a number of goals: 1 or 0.
 _ROLE_ONE = {
     "en": re.compile(r"\b(?:keep(?:s|ing)?|kept|los(?:e|es|ing)|lost)\s+(?:(?:only|just|exactly)\s+)?(an?|no|none)"
-                     r"(?=\s+(?:of\s+(?:the|her|its)\s+(?:\w+\s+)?)?(?:(?:single|other)\s+)?(?:goals?|stations?|doors?)\b|\s*(?:[.,;!?)]|$))",
+                     rf"(?=\s+(?:of\s+(?:{_THE['en']})\s+(?:\w+\s+)?)?(?:(?:single|other)\s+)?(?:goals?|stations?|doors?)\b|\s*(?:[.,;!?)]|$))",
                      re.IGNORECASE),
     "fr": re.compile(r"\b(?:gard|perd)\w*\s+(?:(?:que|seulement|encore)\s+|qu['’])?(une?|aucune?)"
-                     r"(?=\s+(?:seule?\s+)?(?:de\s+ses\s+|des\s+)?(?:\w+\s+)?(?:objectifs?|stations?|portes?)\b|\s*(?:[.,;!?)]|$))",
+                     rf"(?=\s+(?:seule?\s+)?(?:de\s+(?:{_THE['fr']})\s+|des\s+)?(?:\w+\s+)?(?:objectifs?|stations?|portes?)\b|\s*(?:[.,;!?)]|$))",
                      re.IGNORECASE)}
 
 
@@ -571,10 +572,10 @@ def _copied(flat: str, quotes: list[Quote]) -> list[tuple[int, int, Quote]]:
     return sorted(found, key=lambda place: place[0])
 
 
-def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: str) -> dict[int, Problem]:
+def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: str) -> tuple[dict[int, Problem], dict[int, str]]:
     """For the three quantities with a role: the number standing next to the word that names the quantity has to be that
     quantity. Next to: in the same clause, three words away at most. When two words could claim the same number, the
-    nearest takes it. Returns the refusals, by position of the figure."""
+    nearest takes it. Returns the refusals, and the roles confirmed, both by position of the figure."""
     wanted = {role: [fact for fact in facts if fact.role == role] for role in ROLES}
     breaks = [found.start() for found in _BREAK.finditer(flat)]
     pairs = []
@@ -605,12 +606,12 @@ def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: 
                 if role == "borrowed" and first and {"to", "à"} & set(words) and re.match(r"\s+[^\W\d_]", flat[word.end():]):
                     continue                                                    # "73'940 CHF to finance her master's": a purpose
                 pairs.append((len(words), len(between), role, word.start(), word.group(0), index))
-    named, claimed, out = set(), set(), {}
+    named, claimed, out = set(), {}, {}
     for _, _, role, at, said, index in sorted(pairs):
         if (role, at) in named or index in claimed:
             continue
         named.add((role, at))
-        claimed.add(index)
+        claimed[index] = role
         figure, fact = figures[index], wanted[role][0]
         if not any(_same(fact.value, figure.value) for fact in wanted[role]):
             what = {"kept": say("the number of goals kept in this world is", "le nombre d'objectifs gardés dans ce monde est"),
@@ -618,7 +619,7 @@ def _misplaced(flat: str, figures: tuple[Figure, ...], facts: list[Fact], lang: 
                     "borrowed": say("the peak borrowing of this world is", "l'emprunt maximal de ce monde est")}[role]
             out[index] = Problem("role", figure.text, say(f"“{figure.text}” stands next to “{said}”: {what} {fact.written()}.",
                                                           f"« {figure.text} » est à côté de « {said} » : {what} {fact.written()}."))
-    return out
+    return out, claimed
 
 
 def check(text: str, facts: Iterable[Fact | Quote], identifiers: Iterable[str] = (), elsewhere: Iterable[Fact | Quote] = (),
@@ -653,9 +654,11 @@ def check(text: str, facts: Iterable[Fact | Quote], identifiers: Iterable[str] =
             if whole(identifier) not in allowed:
                 problems.append(Problem("identifier", identifier, say(f"“{identifier}” is not one of the worlds tested here.",
                                                                        f"« {identifier} » n'est pas un des mondes testés ici.")))
-        misplaced = _misplaced("".join(rest), reading.figures, facts, lang)
+        misplaced, roles = _misplaced("".join(rest), reading.figures, facts, lang)
         for index, figure in enumerate(reading.figures):
             found = [fact for fact in facts if fact.unit in figure.units and _same(fact.value, figure.value)]
+            if index in roles:                           # "keeps 1 goal": the 1 comes from the goals kept, not from another count of 1
+                found = [fact for fact in found if fact.role == roles[index]] or found
             if index in misplaced:                       # the right kind of number, or not, in the wrong place
                 problems.append(misplaced[index])
             elif found:
