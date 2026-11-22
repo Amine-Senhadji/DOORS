@@ -317,8 +317,9 @@ class TheRoutes(unittest.TestCase):
         self.assertEqual(line["months"], json.loads(json.dumps(months_of(direct))))
         self.assertEqual(self.post("compare", station_id="depart", world_id=EXAMPLE)["world_id"], EXAMPLE)
 
-    def test_a_junction_says_where_each_crisis_of_a_combined_world_stands(self):
-        """À une gare : à venir, en cours ou passée, crise par crise. L'état d'une gare est celui du début du mois."""
+    def test_a_junction_says_where_each_tested_crisis_stands(self):
+        """À une gare : à venir, en cours ou passée, crise par crise, dans chaque monde testé. L'état d'une gare est celui du
+        début du mois : une crise qui commence ce mois-là est à venir ; une crise dont le monde dure encore est en cours."""
         expected = {48: (True, ["a_venir", "a_venir"], ["a_venir", "a_venir"]),
                     60: (False, ["passee", "a_venir"], ["en_cours", "a_venir"]),
                     72: (False, ["passee", "passee"], ["passee", "a_venir"]),
@@ -333,10 +334,23 @@ class TheRoutes(unittest.TestCase):
                                  [(before, 48, 24)] * 2)
                 self.assertEqual([(c["id"], c["from_month"], c["to_month"]) for c in state[EXAMPLE]["crises"]],
                                  [("krach@24", 48, 49), ("chomage_long@25", 60, 72)])
-                # Un monde à une seule crise est rendu comme avant, sans ce champ.
-                self.assertNotIn("crises", state["krach"])
-                self.assertNotIn("crises", state["reference"])
+                # Un monde habituel a une seule crise ; le monde de référence n'en a aucune.
+                self.assertEqual(state["reference"]["crises"], [])
+                self.assertEqual([(c["id"], c["status"]) for c in state["krach"]["crises"]], [("krach@23", "passee")])
                 self.assertEqual(state["krach"]["avant_le_choc"], False)
+        # Les sept mondes habituels, gare par gare. La poussée d'inflation et le franc plus faible ne reviennent pas au monde
+        # de référence : ils restent en cours. La crise immobilière dure deux ans, de 24 à 26 ans.
+        kinds = ["krach", "chomage_6_mois", "perte_job_etudiant", "inflation", "crise_immobiliere", "franc_faible"]
+        coming, running, over = "a_venir", "en_cours", "passee"
+        usual = {12: [coming, coming, coming, coming, coming, coming], 24: [coming, coming, coming, running, coming, running],
+                 36: [coming, over, coming, running, coming, running], 60: [over, over, coming, running, running, running],
+                 72: [over, over, over, running, over, running], 108: [over, over, over, running, over, running]}
+        for gare, statuses in usual.items():
+            state = self.post("node", path=STORY, gare_month=gare)["state_by_world"]
+            with self.subTest(gare=gare):
+                self.assertEqual([[c["status"] for c in state[kind]["crises"]] for kind in kinds], [[status] for status in statuses])
+                # « Avant le choc » et « à venir » disent la même chose, pour un monde à une seule crise.
+                self.assertEqual([state[kind]["avant_le_choc"] for kind in kinds], [status == coming for status in statuses])
 
     def test_the_worlds_route_reads_the_plus_sign_of_an_address(self):
         """Dans une adresse, un « + » arrive comme un espace : la route le relit comme un « + »."""
@@ -457,11 +471,11 @@ class ThePage(unittest.TestCase):
             s = branch["by_world"][EXAMPLE]
             self.assertIn(f"{s['doors_open']} stations ouvertes sur 6 · financement max. {test_web.swiss(s['peak_financing_chf'])} · "
                           f"patrimoine à la fin {test_web.swiss(s['net_worth_end_chf'])}", text)
-        # La fiche de la gare de 25 ans : où en est chacune des deux crises. Les crises seules gardent leur phrase.
+        # La fiche de la gare de 25 ans : où en est chacune des deux crises, puis les crises seules, avec les mêmes trois états.
         self.assertEqual([c["status"] for c in node["state_by_world"][EXAMPLE]["crises"]], ["passee", "a_venir"])
         self.assertIn("Monde à deux crises, à 25 ans : krach des marchés à 24 ans (déjà eu lieu) et chômage long à 25 ans (à venir).", text)
-        self.assertIn("À 25 ans, ces crises testées ont déjà eu lieu : krach des marchés, six mois de chômage, poussée d'inflation, "
-                      "crise immobilière et franc plus faible. Pas encore : perte du job étudiant.", text)
+        self.assertIn("À 25 ans, ces crises testées ont déjà eu lieu : krach des marchés et six mois de chômage. En cours : poussée "
+                      "d'inflation, crise immobilière et franc plus faible. À venir : perte du job étudiant.", text)
         # Écrit dans l'autre ordre, c'est le même monde. Une crise en cours à la gare est dite en cours.
         self.assertRegex(self.page("?monde=chomage_long@25+krach@24")[0], r'<body[^>]*data-world="krach@24\+chomage_long@25"')
         _, text = self.page("?monde=crise_immobiliere@24+chomage_long@27&gare=60")
@@ -478,7 +492,9 @@ class ThePage(unittest.TestCase):
         self.assertRegex(dom, r'<html lang="en"')
         for sentence in ("Market crash at 24 + long unemployment at 25", "Two crises in the same world. Investments fall sharply, within one month.",
                          "Return on investments, per month: −30% (+0.2% in the reference world), at age 24.", "Job lost from age 25 to age 26.",
-                         "World with two crises, at 25: market crash at 24 (already happened) and long unemployment at 25 (still to come)."):
+                         "World with two crises, at 25: market crash at 24 (already happened) and long unemployment at 25 (still to come).",
+                         "At 25, these tested crises have already happened: market crash and six months of unemployment. In progress: inflation surge, "
+                         "housing downturn and weaker franc. Still to come: student job lost."):
             self.assertIn(sentence, text)
         shown = text.replace("Français", "")                      # le lien vers l'autre langue porte son nom
         found = test_english.FRENCH.search(shown)

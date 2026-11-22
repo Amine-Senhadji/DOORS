@@ -131,9 +131,11 @@ export const T = {
     alone: 'Aucune autre branche n’est calculée à cette gare pour l’instant.',
     state: (world, cash, debt, worth) => `À cette gare, dans le monde affiché (${lower(world)}) : ${cash} sur le compte, ${debt} de dette, patrimoine de ${worth}.`,
     // Où en sont les crises testées quand on arrive à cette gare.
-    shocks: (age, after, before) => [
-      after.length ? `À ${age} ans, ${after.length > 1 ? 'ces crises testées ont' : 'cette crise testée a'} déjà eu lieu : ${list(after.map(lower))}.` : '',
-      before.length ? `${after.length ? 'Pas encore' : `À ${age} ans, aucune crise testée n’a encore eu lieu. À venir`} : ${list(before.map(lower))}.` : '',
+    // Trois états, tels que le moteur les donne : déjà eu lieu, en cours, à venir.
+    shocks: (age, over, running, coming) => [
+      over.length ? `À ${age} ans, ${over.length > 1 ? 'ces crises testées ont' : 'cette crise testée a'} déjà eu lieu : ${list(over.map(lower))}.` : '',
+      running.length ? `${over.length ? 'En cours' : `À ${age} ans, en cours`} : ${list(running.map(lower))}.` : '',
+      coming.length ? `${over.length || running.length ? 'À venir' : `À ${age} ans, aucune crise testée n’a encore eu lieu. À venir`} : ${list(coming.map(lower))}.` : '',
     ].filter(Boolean).join(' '),
     // Un monde à deux crises : où en est chacune à cette gare, tel que le moteur le dit.
     crisisStatus: { passee: 'déjà eu lieu', en_cours: 'en cours', a_venir: 'à venir' },

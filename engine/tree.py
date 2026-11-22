@@ -401,8 +401,10 @@ class Tree:
 
         # L'état à la gare, dans chaque monde. `avant_le_choc` : la crise de ce monde n'a pas encore commencé à cet âge
         # (None pour le monde de référence). Après le choc, l'état de la gare porte déjà sa trace.
-        # Un monde combiné a deux crises : `avant_le_choc` dit qu'aucune n'a commencé, et `crises` dit où en est chacune
-        # (à venir, en cours, passée). L'état d'une gare est celui du début du mois : une crise qui commence ce mois-là est à venir.
+        # `crises` dit où en est chaque crise du monde à cette gare : à venir, en cours, ou passée. Une liste vide pour un
+        # monde entier (référence, prudent), une crise pour un monde habituel, deux pour un monde combiné, où `avant_le_choc`
+        # dit qu'aucune des deux n'a commencé. L'état d'une gare est celui du début du mois : une crise qui commence ce
+        # mois-là est à venir ; une crise dont le monde s'écarte encore du monde de référence est en cours.
         if path and gare_month:
             state = {w: self._state(self.lived(path, w, overrides, obs)[1][gare_month]) for w in tested}
         else:
@@ -411,10 +413,9 @@ class Tree:
             start = W.shock_start(th, w, self.h, self.age0)
             state[w]["avant_le_choc"] = None if start is None else gare_month <= start
             state[w]["choc_month"], state[w]["choc_age"] = start, None if start is None else self.age(start)
-            if W.combined(w):
-                state[w]["crises"] = [{**crisis, "status": "a_venir" if gare_month <= crisis["from_month"]
-                                       else "en_cours" if gare_month < crisis["to_month"] else "passee"}
-                                      for crisis in W.crises(th, w, self.h, self.age0)]
+            state[w]["crises"] = [{**crisis, "status": "a_venir" if gare_month <= crisis["from_month"]
+                                   else "en_cours" if gare_month < crisis["to_month"] else "passee"}
+                                  for crisis in W.crises(th, w, self.h, self.age0)]
 
         # Flexibilité : une des branches d'ici, ou le trajet suivi avec un seul changement à une gare suivante.
         reachable = [b["by_world"] for b in open_branches]

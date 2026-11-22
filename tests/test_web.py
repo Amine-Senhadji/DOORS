@@ -374,13 +374,16 @@ class InChrome(unittest.TestCase):
         self.assertIsNotNone(row["signpost"])
         self.assertIn(f"À surveiller {row['signpost']['text']}", text)
         self.assertIn(f"Dans le monde affiché : {swiss(crisis['value_chf'])} pour {swiss(crisis['required_chf'])} demandés.", text)
-        # La gare de 26 ans, dernière correspondance utile : les crises testées y ont déjà eu lieu.
+        # La gare de 26 ans, dernière correspondance utile : toutes les crises testées y ont commencé. Quatre ont déjà eu lieu ;
+        # la poussée d'inflation et le franc plus faible durent encore, et le moteur les dit en cours.
         gare = self.api("node", path=taken["path"], gare_month=72)
         self.assertTrue(all(gare["state_by_world"][w["id"]]["avant_le_choc"] is False for w in self.worlds if w["id"] != "reference"))
+        self.assertEqual({w["id"]: gare["state_by_world"][w["id"]]["crises"][0]["status"] for w in self.worlds if w["id"] != "reference"},
+                         {"krach": "passee", "chomage_6_mois": "passee", "perte_job_etudiant": "passee", "inflation": "en_cours",
+                          "crise_immobiliere": "passee", "franc_faible": "en_cours"})
         dom, text = self.page("?gare=72&monde=krach")
-        self.assertIn("À 26 ans, ces crises testées ont déjà eu lieu : krach des marchés, six mois de chômage, perte du job étudiant, "
-                      "poussée d'inflation, "
-                      "crise immobilière et franc plus faible.", text)
+        self.assertIn("À 26 ans, ces crises testées ont déjà eu lieu : krach des marchés, six mois de chômage, perte du job étudiant "
+                      "et crise immobilière. En cours : poussée d'inflation et franc plus faible.", text)
         self.assertRegex(html.unescape(dom), r'class="gare[^"]*\blast\b[^"]*"[^>]*data-gare="72"[^>]*aria-label="[^"]*dernière correspondance utile"')
         self.assertIn('class="works"', self.page(link)[0], "Un tronçon fragile s'affiche en travaux dans le monde de référence")
 

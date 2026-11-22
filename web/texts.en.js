@@ -129,9 +129,11 @@ export const T = {
     alone: 'No other branch is computed at this junction for now.',
     state: (world, cash, debt, worth) => `At this junction, in the world shown (${lower(world)}): ${cash} on the account, ${debt} of debt, net worth of ${worth}.`,
     // Where the tested crises stand when the route reaches this junction.
-    shocks: (age, after, before) => [
-      after.length ? `At ${age}, ${after.length > 1 ? 'these tested crises have' : 'this tested crisis has'} already happened: ${list(after.map(lower))}.` : '',
-      before.length ? `${after.length ? 'Not yet' : `At ${age}, no tested crisis has happened yet. Still to come`}: ${list(before.map(lower))}.` : '',
+    // Three states, as the engine gives them: already happened, in progress, still to come.
+    shocks: (age, over, running, coming) => [
+      over.length ? `At ${age}, ${over.length > 1 ? 'these tested crises have' : 'this tested crisis has'} already happened: ${list(over.map(lower))}.` : '',
+      running.length ? `${over.length ? 'In progress' : `At ${age}, in progress`}: ${list(running.map(lower))}.` : '',
+      coming.length ? `${over.length || running.length ? 'Still to come' : `At ${age}, no tested crisis has happened yet. Still to come`}: ${list(coming.map(lower))}.` : '',
     ].filter(Boolean).join(' '),
     // A world with two crises: where each of them stands at this junction, as the engine says it.
     crisisStatus: { passee: 'already happened', en_cours: 'in progress', a_venir: 'still to come' },
