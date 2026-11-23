@@ -462,7 +462,9 @@ class TheExplanations(unittest.TestCase):
 class TheModules(unittest.TestCase):
     def test_the_sdk_is_loaded_in_one_function_and_nothing_else_opens_a_connection(self):
         """The SDK is imported in one place: inside `build_client` of ai/model.py, the function the tests forbid. Nothing
-        else in ai/ or in the scripts imports a client of any kind, so no test can reach a model by accident."""
+        else in ai/ or in the scripts imports a client of any kind, so no test can reach a model by accident.
+        One script is not of the AI layer: scripts/demo_gif.py makes the picture of the README. It starts Chrome and
+        writes addresses of this machine: it imports what that takes, nothing more, and no client either."""
         forbidden = {"anthropic", "openai", "httpx", "httpx2", "requests", "urllib", "http", "socket", "ssl", "aiohttp", "subprocess"}
 
         def imports(node, inside=None) -> set:
@@ -480,7 +482,7 @@ class TheModules(unittest.TestCase):
         for file in files:
             found = {(name, where) for name, where in imports(ast.parse(file.read_text(encoding="utf-8"))) if name in forbidden}
             with self.subTest(file=file.name):
-                self.assertEqual(found, {("anthropic", "build_client")} if file.name == "model.py" else set())
+                self.assertEqual(found, {"model.py": {("anthropic", "build_client")}, "demo_gif.py": {("subprocess", None), ("urllib", None)}}.get(file.name, set()))
 
 
 if __name__ == "__main__":
