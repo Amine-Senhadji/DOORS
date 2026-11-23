@@ -3,8 +3,22 @@
 Nothing in the picture is drawn by hand. This script starts a local server of Doors, headless Chrome takes each
 picture from it, and Pillow puts the pictures together. Run from the root of the repository:
 
-    pip install pillow            # only needed here: Doors itself does not use it
-    python scripts/demo_gif.py
+    .venv/bin/python scripts/demo_gif.py
+
+It needs two things that the project does not ask for anywhere else:
+
+- Pillow, which is NOT one of the project's dependencies: requirements.txt does not list it, and nothing but this
+  script imports it. Install it where the script runs:
+
+      .venv/bin/pip install pillow
+
+  To leave the environment of the project as it is, install it in a folder of its own and point the script to it:
+
+      .venv/bin/pip install --target some/folder pillow
+      PYTHONPATH=some/folder .venv/bin/python scripts/demo_gif.py
+
+  Without Pillow the script stops at once, before it starts a server or a browser, and says so.
+- Google Chrome or Chromium. CHROME_BIN names the browser when it is not in one of the usual places.
 
 The server runs in recorded mode: no model is called, whatever the environment holds. Chrome is started once per
 picture, never twice at the same time.
@@ -59,12 +73,29 @@ FRAME = f"""<!doctype html>
 """
 
 
+# Where the browser usually is: the same places as for the tests that read the page (tests/browser.py).
+USUAL = ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser")
+PILLOW = ("Pillow is needed to put the pictures together, and it is not one of the project's dependencies. Install it with "
+          "`.venv/bin/pip install pillow`, or in a folder of its own with `pip install --target some/folder pillow` and run this script "
+          "with PYTHONPATH=some/folder.")
+
+
 def chrome() -> str:
-    found = next((path for path in ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", shutil.which("google-chrome") or "",
-                                    shutil.which("chromium") or ""] if path and Path(path).exists()), None)
+    """The browser: the one CHROME_BIN names (a path that leads nowhere means that there is none), else the first of the usual places."""
+    named = os.environ.get("CHROME_BIN")
+    found = shutil.which(named) if named else next(filter(None, map(shutil.which, USUAL)), None)
     if found is None:
-        raise SystemExit("Chrome is needed to take the pictures: it was not found on this machine.")
+        raise SystemExit("Chrome is needed to take the pictures: it was not found on this machine. CHROME_BIN can name it.")
     return found
+
+
+def pillow():
+    """Pillow's Image module, or the end of the script with the way to install it."""
+    try:
+        from PIL import Image
+    except ImportError:
+        raise SystemExit(PILLOW) from None
+    return Image
 
 
 def serve():
@@ -106,10 +137,7 @@ def pictures(folder: Path) -> list[Path]:
 
 def assemble(files: list[Path], out: Path) -> None:
     """The pictures put together: each one stays as long as its scene, and the whole plays again from the start."""
-    try:
-        from PIL import Image
-    except ImportError:
-        raise SystemExit("Pillow is needed to put the pictures together: pip install pillow") from None
+    Image = pillow()
     frames = [Image.open(file).convert("RGB") for file in files]
     for frame in frames:
         if frame.size != (WIDTH, HEIGHT + STRIP):
@@ -126,6 +154,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=ROOT / "docs" / "demo.gif")
     parser.add_argument("--keep", type=Path, help="a folder where the pictures of the scenes are kept as PNG files")
     args = parser.parse_args(argv)
+    pillow()                    # before anything is started: a missing Pillow is found in a second, not after the pictures
+    chrome()                    # likewise for the browser
     with tempfile.TemporaryDirectory(prefix="doors-demo-") as temporary:
         folder = args.keep or Path(temporary)
         folder.mkdir(parents=True, exist_ok=True)
