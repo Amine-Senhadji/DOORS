@@ -1,11 +1,12 @@
 """The two modes of the AI layer, and what each one answers.
 
-- Live: when ANTHROPIC_API_KEY is set in the environment of the server, the model is called. Only whether the key is
-  there is looked at here: its value is never read, kept or returned. The SDK reads it when it sends a request.
-- Recorded: with no key, or with DOORS_AI=recorded, no request leaves the machine. A recorded answer is played again
-  by the same loop as a live one: the tools run on the engine of today and the checker reads the texts again. A
-  recording that Doors would not ask today, to the letter, is refused. A route or a sentence with no recording has no
-  recorded answer, and nothing is made up in its place.
+- Live: only when it is asked for and can be had, that is with DOORS_AI=live and ANTHROPIC_API_KEY both set in the
+  environment of the server. A key exported in a terminal is not enough: the page never spends on its own. Only whether
+  the key is there is looked at here: its value is never read, kept or returned. The SDK reads it when it sends a request.
+- Recorded: in every other case, no request leaves the machine. A recorded answer is played again by the same loop
+  as a live one: the tools run on the engine of today and the checker reads the texts again. A recording that Doors
+  would not ask today, to the letter, is refused. A route or a sentence with no recording has no recorded answer, and
+  nothing is made up in its place: the screen says so, and shows what the engine finds on its own.
 
 When a live call fails, or when the hourly limit of live calls is reached, the answer says so, and gives the recorded
 answer if there is one. Every answer says where it comes from.
@@ -65,11 +66,24 @@ _hour = _Hour()
 _played: dict = {}                  # the recordings already played again by this server, each with its result
 
 
+def _asked_live() -> bool:
+    return os.environ.get("DOORS_AI", "").strip().lower() == "live"
+
+
 def mode() -> str:
-    """"live" or "recorded". Only the presence of the key is looked at."""
-    if os.environ.get("DOORS_AI", "").strip().lower() == "recorded":
-        return "recorded"
-    return "live" if os.environ.get("ANTHROPIC_API_KEY") else "recorded"
+    """"live" or "recorded". Live takes both DOORS_AI=live and a key; only the presence of the key is looked at."""
+    return "live" if _asked_live() and os.environ.get("ANTHROPIC_API_KEY") else "recorded"
+
+
+def why() -> str:
+    """The mode in one sentence, for the screen: what it is, and what would change it."""
+    if mode() == "live":
+        return say(f"Live mode: the model ({MODEL}) is called for each request.", f"Mode direct : le modèle ({MODEL}) est appelé à chaque demande.")
+    if _asked_live():
+        return say("Recorded mode: DOORS_AI=live is set, but the server has no key (ANTHROPIC_API_KEY).",
+                   "Mode enregistré : DOORS_AI=live est réglé, mais le serveur n'a pas de clé (ANTHROPIC_API_KEY).")
+    return say("Recorded mode: no request leaves this machine. The live mode takes DOORS_AI=live and a key (ANTHROPIC_API_KEY) on the server.",
+               "Mode enregistré : aucune demande ne quitte cette machine. Le mode direct demande DOORS_AI=live et une clé (ANTHROPIC_API_KEY) sur le serveur.")
 
 
 def live_model() -> Live:
@@ -80,7 +94,7 @@ def live_model() -> Live:
 def status(scenario: str = "alexia") -> dict:
     """What the screen needs to know before it asks: the mode, the model, the limits, and what is recorded."""
     live = mode() == "live"
-    return {"mode": "live" if live else "recorded", "model": MODEL,
+    return {"mode": "live" if live else "recorded", "why": why(), "model": MODEL,
             "limits": {"sentence_characters": asking.MAX_LENGTH, "live_requests_per_hour": _hour.most() if live else None,
                        "live_requests_left": _hour.left() if live else None},
             "recorded": recordings.listing(scenario)}
@@ -157,6 +171,14 @@ def _serve(kind: str, tree: Tree, scenario: str, path: list[dict] | None, overri
     return _answer("recorded", result, recorded["model"], recorded["recorded_at"], notice)
 
 
+def _scan(tree: Tree, path: list[dict], overrides: dict, truth: dict | None) -> dict | None:
+    """For a route of the benchmark, the hardest worlds of the full scan made offline, named for the screen."""
+    if truth is None:
+        return None
+    route = stressing.Route(Tree(tree.sc), path, overrides)
+    return {**truth, "hardest": [route.shown(summary) for summary in truth["hardest"]]}
+
+
 def stress(tree: Tree, path: list[dict], overrides: dict | None = None, lang: str | None = None, scenario: str = "alexia") -> dict:
     """“Find what breaks my plan” for a route: live, or the recording made for this route, these assumptions and this
     language. A route the engine refuses is refused before anything else, with the engine's reason."""
@@ -164,8 +186,12 @@ def stress(tree: Tree, path: list[dict], overrides: dict | None = None, lang: st
     with i18n.use(lang):
         path = normalize(path, tree.h)
         truth = benchmark.truth_for(path, overrides, tree.h)
-        return _serve("stress", tree, scenario, path, overrides, lang, None,
-                      lambda model: stressing.run(tree, path, model, overrides, lang, truth))
+        answer = _serve("stress", tree, scenario, path, overrides, lang, None,
+                        lambda model: stressing.run(tree, path, model, overrides, lang, truth))
+        # With no answer of the model to show, the screen shows what the engine finds on its own. It is not an answer
+        # of the model and is never labelled as one.
+        return {**answer, "engine": None if answer["available"] else stressing.alone(tree, path, overrides, lang),
+                "scan": _scan(tree, path, overrides, truth)}
 
 
 def ask(tree: Tree, sentence: str, path: list[dict] | None = None, overrides: dict | None = None, lang: str | None = None,

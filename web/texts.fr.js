@@ -298,6 +298,98 @@ export const T = {
     refused: (message) => `Pas d’épreuve pour ce trajet. ${message}`,
   },
 
+  // La couche d'IA : le modèle propose et écrit ; le moteur calcule, classe et contrôle. Chaque réponse dit d'où elle vient.
+  ai: {
+    title: 'Demande avec tes mots',
+    placeholder: 'Et si je perdais mon emploi pendant 9 mois à 27 ans ?',
+    field: 'Une phrase sur ton trajet, une crise, une hypothèse ou ton épargne',
+    read: 'Lire',
+    stress: 'Trouver ce qui casse mon plan',
+    live: (model) => `En direct · ${model}`,
+    recorded: 'Réponses enregistrées',
+    nothingRecorded: 'Aucune réponse enregistrée pour l’instant',
+    nothingHere: 'Aucune réponse enregistrée pour ce trajet',
+    sentences: (n) => plural(n, 'phrase enregistrée', 'phrases enregistrées'),
+    close: 'Fermer',
+    noAnswer: 'Aucune réponse du modèle à montrer',
+    played: 'Hors du mode direct, Doors rejoue de vraies réponses du modèle : chacune a été enregistrée une fois, et elle est contrôlée de nouveau sur le moteur avant d’être montrée. '
+      + 'Quand il n’y en a pas, rien n’est inventé.',
+    howTo: 'Pour avoir des réponses : les enregistrer avec scripts/record_ai.py, ou lancer le serveur en mode direct.',
+    engine: 'Le modèle propose et écrit. Le moteur calcule, classe et contrôle chaque chiffre.',
+  },
+
+  // « Demande avec tes mots » : une phrase lue en réglages, montrés avant tout calcul.
+  ask: {
+    title: 'Demande avec tes mots',
+    waiting: 'Lecture de ta phrase…',
+    pick: 'Ces phrases ont une réponse enregistrée pour le trajet à l’écran :',
+    otherRoute: 'Des phrases sont enregistrées pour un autre trajet ou d’autres hypothèses, pas pour ce qui est à l’écran.',
+    understood: 'Voici ce que j’ai compris',
+    nothing: 'Rien dans cette phrase que Doors sache régler',
+    intro: 'Rien n’est encore calculé. Garde, modifie ou décoche chaque réglage, puis calcule.',
+    route: 'Trajet',
+    sameRoute: 'C’est le trajet déjà à l’écran.',
+    crisis: (n) => (n > 1 ? 'Deux crises dans le même monde' : 'Crise'),
+    usual: (name, fields) => `${name} : tu n’as pas précisé ${list(fields)}. Le moteur prend sa valeur habituelle.`,
+    fields: { age: 'l’âge', size: 'la taille', years: 'la durée', at_age: 'l’âge', value: 'la valeur', amount_chf: 'le montant' },
+    inferred: (fields) => `Pas dans ta phrase : ${list(fields)}. À vérifier.`,
+    inferredFor: (name, fields) => `${name} : ${list(fields)} n’est pas dans ta phrase. À vérifier.`,
+    toCheck: 'À vérifier.',
+    before: (value, unit) => `À l’écran maintenant : ${value} ${unit}.`,
+    sameValue: 'C’est la valeur déjà à l’écran.',
+    savings: (age) => `De côté à ${age} ans`,
+    notUnderstood: 'Ce que Doors ne sait pas régler',
+    refused: 'Ce que le moteur refuse',
+    compute: 'Calculer',
+    cancel: 'Annuler',
+    noneTicked: 'Rien n’est coché : il n’y a rien à calculer.',
+  },
+
+  // « Trouver ce qui casse mon plan » : les mondes proposés par le modèle, simulés et classés par le moteur.
+  stress: {
+    title: 'Ce qui casse ce trajet',
+    waiting: 'Le modèle propose des mondes, le moteur simule chacun. Avec le modèle en direct, cela prend quelques minutes.',
+    budget: (calls, worlds, space) => `Le modèle a proposé ${plural(worlds, 'monde', 'mondes')} en ${plural(calls, 'appel', 'appels')}, sur ${space} mondes possibles à une ou deux crises. `
+      + 'Le moteur a simulé chacun et les a classés : le classement est celui du moteur, pas celui du modèle.',
+    calm: (kept, total) => `Sans crise, ce trajet garde ${kept} de ses ${total} objectifs. Un objectif est une station de la carte.`,
+    nothing: 'Aucun des mondes testés ne fait perdre un objectif à ce trajet.',
+    lost: (names) => (names.length ? `${plural(names.length, 'objectif perdu', 'objectifs perdus')} : ${list(names)}.` : 'Aucun objectif perdu.'),
+    show: 'Voir sur la carte',
+    explanation: 'Explication écrite par le modèle',
+    rejected: 'Le contrôleur a refusé chaque texte que le modèle a écrit pour ce monde. Seuls les chiffres du moteur sont montrés.',
+    attempts: (n) => `Texte accepté par le contrôleur à la tentative ${n}.`,
+    figures: 'Chaque chiffre du texte, et d’où le moteur l’a donné :',
+    signpost: 'Signal à surveiller, dans les mots du moteur',
+    noSignpost: 'Le moteur n’a pas de signal à surveiller pour ce monde.',
+    checked: 'Le moteur vérifie la recherche',
+    single: {
+      harder: (scanned, lost) => `Le moteur a simulé lui-même les ${scanned} crises seules. Au moins une est plus dure que ce que la recherche a trouvé. Les plus dures font perdre ${plural(lost, 'objectif', 'objectifs')} à ce trajet :`,
+      milder: (scanned) => `Le moteur a simulé lui-même les ${scanned} crises seules. L’une casse autant que ce que la recherche a trouvé, en étant moins grave :`,
+      none: (scanned) => `Le moteur a simulé lui-même les ${scanned} crises seules. Aucune n’est plus dure que ce que la recherche a trouvé.`,
+      alone: (scanned, lost) => (lost ? `Le moteur a simulé lui-même les ${scanned} crises seules. Les plus dures font perdre ${plural(lost, 'objectif', 'objectifs')} à ce trajet :`
+        : `Le moteur a simulé lui-même les ${scanned} crises seules. Aucune ne fait perdre un objectif à ce trajet.`),
+    },
+    scan: (worlds, lost, count) => `Pour ce trajet, tous les mondes à une ou deux crises ont été simulés hors ligne : ${worlds} mondes. `
+      + `Les plus durs lui font perdre ${plural(lost, 'objectif', 'objectifs')}, et il y en a ${count}. Les moins graves d’entre eux :`,
+    scanFound: 'La recherche a trouvé un monde aussi dur que les plus durs du balayage complet.',
+    scanMissed: 'La recherche n’a pas trouvé de monde aussi dur que les plus durs du balayage complet.',
+    alone: 'Ce que le moteur trouve seul',
+    aloneHow: 'Ce n’est pas une réponse du modèle : seul le moteur a tourné.',
+    details: 'Détails : le chemin de la recherche',
+    call: (n) => `Appel ${n} :`,
+    tested: (n) => plural(n, 'monde simulé', 'mondes simulés'),
+    again: 'Déjà simulé',
+    refusedWorld: 'Refusé par le moteur',
+    notTested: (most, worlds) => `Non simulé, un appel prend ${most} mondes au plus : ${worlds}`,
+    stopped: {
+      budget: 'La recherche s’est arrêtée quand ses appels ont été épuisés.',
+      model: 'Le modèle a arrêté la recherche lui-même.',
+      no_call: 'Le modèle n’a pas appelé l’outil.',
+      refusal: 'Le modèle a décliné la demande.',
+    },
+    tokens: (sent, answered) => `Jetons : ${sent} envoyés, ${answered} reçus.`,
+  },
+
   // Le tiroir : ce qui prouve et ce qui limite.
   drawer: {
     open: 'Hypothèses et preuves',

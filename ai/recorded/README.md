@@ -1,8 +1,12 @@
 # Recorded answers
 
 Each file of this folder is one real exchange with the model, recorded once by `scripts/record_ai.py`: what Doors
-asked, turn by turn, and what the model answered. Without a key, Doors plays these answers again instead of calling
-the model. Nothing here was written by hand, and nothing is made up for a route or a sentence that has no file.
+asked, turn by turn, and what the model answered. Outside the live mode, Doors plays these answers again instead of
+calling the model. Nothing here was written by hand, and nothing is made up for a route or a sentence that has no
+file: the screen then says that no answer is recorded, and shows only what the engine finds on its own.
+
+The live mode takes two things in the environment of the server, `DOORS_AI=live` and a key (`ANTHROPIC_API_KEY`).
+A key alone is not enough: the page never spends on its own.
 
 What is recorded, for the demo route with unchanged assumptions, in English and in French:
 

@@ -1,15 +1,17 @@
 // Démarrage et enchaînement : le profil, les mondes, le trajet en cours, la carte, les fiches.
 // Aucun chiffre n'est calculé ici : tout vient de web/api.js.
 import { T, lang, otherLanguageUrl } from './i18n.js';
-import { ageAtMonth, chf, worldValue } from './format.js';
-import { fetchAdaptive, fetchAssumptions, fetchChecks, fetchFolkRule, fetchLimits, fetchNode, fetchPath, fetchPathways, fetchPolicies, fetchScenario, fetchWorlds,
-         runStarterKit, setAssumptions, setObservation, setWorlds } from './api.js';
+import { ageAtMonth, chf, worldDetails } from './format.js';
+import { askSentence, askStress, fetchAdaptive, fetchAiStatus, fetchAssumptions, fetchChecks, fetchFolkRule, fetchLimits, fetchNode, fetchPath, fetchPathways,
+         fetchPolicies, fetchScenario, fetchWorlds, runStarterKit, setAssumptions, setObservation, setWorlds } from './api.js';
 import { VIEW, SYMBOL, renderMap, tripName } from './map.js';
 import { renderGareCard, renderPlanCard, renderStationCard, renderTripCard } from './card.js';
 import { runTrain, stopTrain } from './train.js';
 import { renderDrawer } from './drawer.js';
 import { renderPolicies } from './policies.js';
 import { renderFolk } from './folk.js';
+import { renderAsk } from './ask.js';
+import { renderStress } from './stress.js';
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -31,6 +33,8 @@ const state = {
   observed: null,        // l'épargne constatée à une gare : { gare_month, value_chf }, ou null
   drawer: null,          // le tiroir, une fois ouvert : { assumptions, checks, kit, limits, month, section }
   geometry: null,        // le tracé du trajet en cours, pour le métro
+  ai: null,              // the status of the AI layer: its mode, its model, what is recorded. null if the server has none
+  extra: null,           // the world shown besides the engine's own list: one more pill, on a line of its own
 };
 
 const world = () => state.worlds.find((w) => w.id === state.world) ?? state.worlds[0];
@@ -67,6 +71,45 @@ function renderHeader() {
   $('language').setAttribute('aria-label', `${T.language.label} : ${T.language.switchTo}`);
   $('drawer-open').textContent = T.drawer.open;
   $('drawer-open').addEventListener('click', () => openDrawer(state.drawer?.section));
+  // The AI layer: one sentence to read, and the search for what breaks the route.
+  $('ai-title').textContent = T.ai.title;
+  $('ask-input').placeholder = T.ai.placeholder;
+  $('ask-input').setAttribute('aria-label', T.ai.field);
+  $('ask-read').textContent = T.ai.read;
+  $('stress').textContent = T.ai.stress;
+  $('ask-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    openAsk($('ask-input').value);
+  });
+  $('ask-recorded').addEventListener('click', () => openAsk(''));
+  $('stress').addEventListener('click', openStress);
+  // A sheet closed with the Escape key lets go of what it showed, like one closed by its buttons. The event comes a
+  // moment after the closing: a sheet opened again in between is left as it is.
+  for (const marker of ['ask', 'stress']) {
+    $(`${marker}-sheet`).addEventListener('close', () => { if (!$(`${marker}-sheet`).open) letGo(marker); });
+  }
+}
+
+/** What is recorded for exactly what is on screen: this language, this route, these assumptions. */
+function recordedHere(kind) {
+  const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
+  return (state.ai?.recorded[kind] ?? []).filter((each) => each.language === lang && JSON.stringify(each.path) === JSON.stringify(state.trip.path)
+    && same(each.assumptions, state.overrides));
+}
+
+/** The row of the AI layer: its mode in a few words, and the recorded sentences when there are some for this route. */
+function renderAi() {
+  const row = $('ai-row');
+  row.hidden = !state.ai;
+  if (!state.ai) return;
+  const live = state.ai.mode === 'live', sentences = recordedHere('ask'), here = sentences.length + recordedHere('stress').length;
+  const anywhere = state.ai.recorded.ask.length + state.ai.recorded.stress.length;
+  $('ai-mode').textContent = live ? T.ai.live(state.ai.model) : here ? T.ai.recorded : anywhere ? T.ai.nothingHere : T.ai.nothingRecorded;
+  $('ai-mode').title = state.ai.why;
+  $('ask-input').maxLength = state.ai.limits.sentence_characters;
+  $('ask-recorded').hidden = live || !sentences.length;
+  $('ask-recorded').textContent = T.ai.sentences(sentences.length);
+  document.body.dataset.ai = live ? 'live' : here ? 'recorded' : 'none';
 }
 
 const ARROW = '<svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true"><path d="M1 7 H19 M14 2 L19 7 L14 12" '
@@ -92,21 +135,15 @@ function renderTraffic() {
     button.dataset.world = w.id;
     button.setAttribute('aria-pressed', String(w.id === state.world));
     button.addEventListener('click', () => setWorld(w.id));
-    if (!w.crises) return [button];
-    // Un monde à deux crises : une pastille de plus, au nom long, qui commence une nouvelle ligne.
+    if (!w.crises && w.id !== state.extra) return [button];
+    // Un monde à deux crises, ou un monde montré en plus de ceux du moteur : une pastille de plus, qui commence une nouvelle ligne.
     const line = document.createElement('span');
     line.className = 'break';
     line.setAttribute('aria-hidden', 'true');
     return [line, button];
   }));
   const shown = world();
-  const details = shown.parameters.map((p) => {
-    const span = p.to_month >= months() && p.months > 1 ? T.traffic.since(when(p.from_month))
-      : T.traffic.span(when(p.from_month), when(p.months > 1 ? p.to_month : p.from_month));
-    if (typeof p.value === 'boolean') return T.traffic.flag(p.label, span);
-    return T.traffic.parameter(p.label, `${worldValue(p.field, p.value)} ${T.traffic.reference(worldValue(p.field, p.reference))}`, span);
-  });
-  $('traffic-note').textContent = [shown.description, ...details].join(' ');
+  $('traffic-note').textContent = [shown.description, ...worldDetails(shown.parameters, months(), profile().age)].join(' ');
   // L'âge de la crise affichée : un an plus tôt, un an plus tard, entre la première et la dernière gare.
   const age = $('traffic-age');
   age.hidden = !shown.adjustable;
@@ -131,14 +168,21 @@ async function setCrisisAge(type, age) {
     state.world = id;
     setWorlds(worlds.map((w) => w.id));
   };
+  const extra = state.worlds.findIndex((w) => w.id === state.extra);
   try {
-    const worlds = await fetchWorlds(state.worlds.map((w) => (w.type === type ? `${type}@${age}` : w.id)));
+    // The crisis keeps its severity when it moves: only its age changes.
+    const moved = (w) => `${type}@${age}${w.gravity && w.gravity !== 100 ? `~${w.gravity}` : ''}`;
+    const worlds = await fetchWorlds(state.worlds.map((w) => (w.type === type ? moved(w) : w.id)));
     use(worlds, worlds.find((w) => w.type === shown).id);
+    if (extra >= 0) state.extra = worlds[extra].id;
   } catch (error) {
     fail(error);
     return;
   }
-  if (!(await reload())) use(before.worlds, before.world);      // le moteur a refusé : on revient aux mondes d'avant
+  if (!(await reload())) {                                      // le moteur a refusé : on revient aux mondes d'avant
+    use(before.worlds, before.world);
+    if (extra >= 0) state.extra = before.worlds[extra].id;
+  }
 }
 
 /** Recalcule le trajet en cours (mondes ou hypothèses changés) et rouvre ce qui était ouvert. */
@@ -283,11 +327,144 @@ async function openFolk() {
   }
 }
 
+// ------------------------------------------------------------------ the AI layer
+/** Shows a world given by its identifier. One of the engine's crises, moved or resized, takes the place of its pill; any
+ *  other world (two crises, or a crisis the list does not hold) becomes one more pill. The engine describes the world and
+ *  throws if it refuses it. The route is not recomputed here. */
+async function useWorld(id) {
+  const type = id.split('@')[0].split('~')[0];
+  const own = id.includes('+') ? null : state.worlds.find((w) => w.adjustable && w.type === type && w.id !== state.extra);
+  const at = own ? state.worlds.indexOf(own) : -1;
+  const ids = own ? state.worlds.map((w) => (w === own ? id : w.id)) : [...state.worlds.filter((w) => w.id !== state.extra).map((w) => w.id), id];
+  const worlds = await fetchWorlds(ids);
+  if (!own) state.extra = worlds.at(-1).id;
+  state.worlds = worlds;
+  state.world = (own ? worlds[at] : worlds.at(-1)).id;
+  setWorlds(worlds.map((w) => w.id));
+}
+
+/** What a setting may change on screen, kept to come back to it if the engine refuses. */
+const snapshot = () => ({ worlds: state.worlds, world: state.world, extra: state.extra, overrides: { ...state.overrides }, observed: state.observed });
+
+function restore(before) {
+  Object.assign(state, { worlds: before.worlds, world: before.world, extra: before.extra, overrides: before.overrides });
+  setWorlds(before.worlds.map((w) => w.id));
+  setAssumptions(before.overrides);
+  remember(before.observed);
+  render();
+}
+
+/** Applies the settings read from a sentence: a route, a world, assumptions, savings. The engine recomputes the whole
+ *  route; if it refuses, nothing is changed and its reason is shown. */
+async function applySettings({ path, world, assumptions, observation }) {
+  $('status').textContent = '';
+  const before = snapshot();
+  try {
+    if (world) await useWorld(world);
+  } catch (error) {
+    fail(error);
+    return false;
+  }
+  if (assumptions) {
+    state.overrides = { ...state.overrides, ...assumptions };
+    setAssumptions(state.overrides);
+  }
+  // Savings are what she has at a junction of one route: on another route, the ones she had given no longer apply.
+  if (observation || path) remember(observation ?? null);
+  if (!(await showTrip(path ?? state.trip.path))) {
+    restore(before);
+    return false;
+  }
+  document.body.dataset.overrides = String(Object.keys(state.overrides).length);
+  renderTiroir();
+  return true;
+}
+
+let applying = Promise.resolve();        // what is being applied, for an address that asks to compute or to show at once
+
+/** A sheet of the AI layer that closes keeps nothing: neither its marker on the page nor what it showed. Done at once
+ *  when the page closes it. The browser's own way out (the Escape key) comes through the "close" event, see below. */
+function letGo(marker) {
+  const sheet = $(`${marker}-sheet`);
+  if (sheet.open) sheet.close();
+  delete document.body.dataset[marker];
+  sheet.replaceChildren();
+}
+
+/** Opens the sheet of "Ask in your own words". With no sentence, and recorded answers for what is on screen: the
+ *  sentences to pick from. Otherwise the server reads the sentence, live or from a recording. Nothing is computed until
+ *  she presses "Compute". */
+async function openAsk(sentence = '') {
+  const sheet = $('ask-sheet'), text = sentence.trim().replace(/\s+/g, ' ');
+  const sentences = state.ai.mode === 'live' ? [] : recordedHere('ask').map((each) => each.sentence);
+  const show = (view) => {
+    renderAsk(sheet, { sentence: text, sentences, elsewhere: state.ai.recorded.ask.some((each) => each.language === lang), why: state.ai.why,
+                       startAge: profile().age, horizon: months(), ...view }, {
+      onClose: () => letGo('ask'),
+      onPick: (picked) => {
+        $('ask-input').value = picked;
+        openAsk(picked);
+      },
+      onCompute: (settings) => {
+        applying = (async () => { if (await applySettings(settings)) letGo('ask'); })();
+        return applying;
+      },
+    });
+    if (!sheet.open) sheet.showModal();
+    sheet.scrollTop = 0;
+    document.body.dataset.ask = view.state;
+  };
+  if (!text && sentences.length) {
+    show({ state: 'list' });
+    return;
+  }
+  show({ state: 'wait' });
+  try {
+    const answer = await askSentence(text, state.trip.path);
+    show({ state: answer.available ? 'answer' : 'none', answer });
+  } catch (error) {
+    show({ state: 'none', answer: { reason: error.refused ? T.refused(error.message) : T.serverDown } });
+  }
+}
+
+/** "Show on the map": the world becomes the world shown, and the route is recomputed in it. */
+async function showOnMap(id) {
+  $('status').textContent = '';
+  const before = snapshot();
+  try {
+    await useWorld(id);
+  } catch (error) {
+    fail(error);
+    return;
+  }
+  if (await reload()) letGo('stress');
+  else restore(before);
+}
+
+/** Opens the sheet of "Find what breaks my plan" for the route on screen: the answer of the model, live or recorded, or,
+ *  when there is none, what the engine finds on its own. */
+async function openStress() {
+  const sheet = $('stress-sheet');
+  const show = (view) => {
+    renderStress(sheet, { why: state.ai.why, ...view }, { onClose: () => letGo('stress'), onShow: (id) => { applying = showOnMap(id); } });
+    if (!sheet.open) sheet.showModal();
+    sheet.scrollTop = 0;
+    document.body.dataset.stress = view.state === 'wait' ? 'wait' : view.answer.available ? 'answer' : 'none';
+  };
+  show({ state: 'wait' });
+  try {
+    show({ state: 'answer', answer: await askStress(state.trip.path) });
+  } catch (error) {
+    show({ state: 'answer', answer: { available: false, reason: error.refused ? T.refused(error.message) : T.serverDown, engine: null, scan: null } });
+  }
+}
+
 function render() {
   // Avec le panneau des plans ouvert, la branche de la règle est choisie dans les mondes où la règle s'applique.
   if (state.selected?.kind === 'plan' && state.plan) {
     state.branch = state.plan.by_world[state.world]?.adaptive.applies ? state.plan.rule.branch_id : null;
   }
+  renderAi();
   renderChips();
   renderTraffic();
   renderBoard();
@@ -435,6 +612,7 @@ async function boot() {
     document.body.dataset.ready = 'error';
     return;
   }
+  state.ai = await fetchAiStatus().catch(() => null);       // a server with no AI layer: the page works without its row
   renderHeader();
   // Pour ouvrir directement un trajet, un monde, une gare ou une station :
   // ?trajet=master&monde=chomage_6_mois&gare=12   ou   ?trajet=berlin&station=logement
@@ -450,6 +628,7 @@ async function boot() {
       state.worlds = await fetchWorlds([...state.worlds.map((w) => w.id), askedMonde]);
       setWorlds(state.worlds.map((w) => w.id));
       state.world = state.worlds.at(-1).id;
+      state.extra = state.world;
     } catch (error) {
       refusal = error;
     }
@@ -506,6 +685,23 @@ async function boot() {
   if (params.has('regle')) await openFolk();                // ?regle=1 : la règle répandue, à l'épreuve
   if (params.has('tiroir')) await openDrawer(params.get('tiroir') || 'hypotheses');      // ?tiroir=registre
   if (state.trip.doors.some((d) => d.key === params.get('station'))) selectStation(params.get('station'));
+  // ?stress=1 : "Find what breaks my plan". With &show=2, the second world listed is shown on the map, as its link does.
+  if (state.ai && params.has('stress')) {
+    await openStress();
+    if (params.has('show')) {
+      $('stress-sheet').querySelectorAll('[data-show]')[Number(params.get('show')) - 1]?.click();
+      await applying;
+    }
+  }
+  // ?ask=What if… : the sentence is read. With &compute=1, what was understood is applied at once, as "Compute" does.
+  if (state.ai && params.has('ask')) {
+    $('ask-input').value = params.get('ask');
+    await openAsk(params.get('ask'));
+    if (params.has('compute')) {
+      $('ask-sheet').querySelector('#ask-apply')?.requestSubmit();
+      await applying;
+    }
+  }
   if (refusal) fail(refusal);
   await document.fonts?.ready;
   document.body.dataset.ready = '1';

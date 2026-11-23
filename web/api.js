@@ -70,6 +70,13 @@ export const fetchPolicies = (path) => call(`${V3}/policies`, { path, assumption
 /** Une règle répandue, mise à l'épreuve par le moteur dans deux états d'Alexia. */
 export const fetchFolkRule = (path) => call(`${V3}/folk-rule`, { path, assumptions: overrides });
 
+/** The AI layer. Its status: the mode (live or recorded), the model, and what is recorded. */
+export const fetchAiStatus = () => call('/ai/status');
+/** "Find what breaks my plan" for a route: the answer of the model if there is one, and what the engine finds on its own. */
+export const askStress = (path) => call('/ai/stress', { path, assumptions: overrides });
+/** "Ask in your own words": one sentence read into settings. Nothing is computed by this call. */
+export const askSentence = (sentence, path) => call('/ai/ask', { sentence, path, assumptions: overrides });
+
 /** Le tiroir : les hypothèses, les vérifications en direct, l'égalité avec le starter-kit relancée, les limites. */
 export const fetchAssumptions = () => call('/assumptions');
 export const fetchChecks = () => call('/checks');

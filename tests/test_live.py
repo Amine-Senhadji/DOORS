@@ -103,10 +103,9 @@ class Offline(unittest.TestCase):
         recordings._read.clear()
 
     def live(self, model=None, **environment):
-        """The live mode for the rest of the test, with a model that is not the model: a key-shaped text in the
-        environment, and `live_model` replaced."""
-        self.enterContext(mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": SHAPED, **environment}))
-        os.environ.pop("DOORS_AI", None)
+        """The live mode for the rest of the test, with a model that is not the model: the live mode asked for, a
+        key-shaped text in the environment, and `live_model` replaced."""
+        self.enterContext(mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": "live", **environment}))
         self.enterContext(mock.patch.object(service, "live_model", lambda: model or understudy()))
 
     def keep(self, *made: dict) -> list[dict]:
@@ -485,16 +484,27 @@ class RecordedAndPlayedAgain(Offline):
 
 # ---------------------------------------------------------------------------------------------------- the two modes
 class TheModes(Offline):
-    def test_live_with_a_key_in_the_environment_recorded_without_one_or_when_asked(self):
-        for environment, expected in (({}, "recorded"), ({"ANTHROPIC_API_KEY": SHAPED}, "live"), ({"ANTHROPIC_API_KEY": ""}, "recorded"),
-                                      ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": "recorded"}, "recorded"),
-                                      ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": " Recorded "}, "recorded"), ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": "live"}, "live"),
-                                      ({"DOORS_AI": "live"}, "recorded")):
-            with self.subTest(environment=sorted(environment)), mock.patch.dict(os.environ, environment):
+    def test_the_live_mode_takes_both_the_key_and_doors_ai_live(self):
+        """A key exported in a terminal is not enough: the page never spends on its own. And asking for the live mode
+        without a key gives the recorded mode, which says why."""
+        recorded = "Recorded mode: no request leaves this machine. The live mode takes DOORS_AI=live and a key (ANTHROPIC_API_KEY) on the server."
+        no_key = "Recorded mode: DOORS_AI=live is set, but the server has no key (ANTHROPIC_API_KEY)."
+        live = "Live mode: the model (claude-sonnet-5-5) is called for each request."
+        for environment, expected, why in (({}, "recorded", recorded), ({"ANTHROPIC_API_KEY": SHAPED}, "recorded", recorded),
+                                           ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": "recorded"}, "recorded", recorded),
+                                           ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": "yes"}, "recorded", recorded),
+                                           ({"DOORS_AI": "live"}, "recorded", no_key), ({"ANTHROPIC_API_KEY": "", "DOORS_AI": "live"}, "recorded", no_key),
+                                           ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": "live"}, "live", live),
+                                           ({"ANTHROPIC_API_KEY": SHAPED, "DOORS_AI": " Live "}, "live", live)):
+            with self.subTest(environment=sorted(environment.items())), mock.patch.dict(os.environ, environment), i18n.use("en"):
                 for name in ("ANTHROPIC_API_KEY", "DOORS_AI"):
                     if name not in environment:
                         os.environ.pop(name, None)
-                self.assertEqual(service.mode(), expected)
+                self.assertEqual((service.mode(), service.why(), service.status()["mode"], service.status()["why"]), (expected, why, expected, why))
+                self.assertNotIn(SHAPED, json.dumps(service.status()))
+        with mock.patch.dict(os.environ, {"DOORS_AI": "live"}), i18n.use("fr"):
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+            self.assertEqual(service.why(), "Mode enregistré : DOORS_AI=live est réglé, mais le serveur n'a pas de clé (ANTHROPIC_API_KEY).")
         self.assertEqual(service.mode(), "recorded")                # the tests themselves: whatever the terminal they are run from
 
     def test_no_test_can_build_the_client_of_the_sdk(self):
@@ -506,6 +516,7 @@ class TheModes(Offline):
     def test_the_status_says_the_mode_the_limits_and_what_is_recorded_and_never_the_key(self):
         self.keep(recording_of("stress"), recording_of("ask", "fr", NEUF))
         status = service.status("alexia")
+        self.assertEqual(sorted(status), ["limits", "mode", "model", "recorded", "why"])
         self.assertEqual({key: status[key] for key in ("mode", "model", "limits")},
                          {"mode": "recorded", "model": "claude-sonnet-5-5",
                           "limits": {"sentence_characters": 400, "live_requests_per_hour": None, "live_requests_left": None}})
@@ -519,9 +530,9 @@ class TheModes(Offline):
     def test_in_recorded_mode_a_stress_test_is_the_recording_of_that_route_played_again(self):
         self.keep(recording_of("stress", "en"), recording_of("stress", "fr"))
         answer = service.stress(TREE, benchmark.ROUTES["story_a"], None, "en")
-        self.assertEqual({key: value for key, value in answer.items() if key != "result"},
+        self.assertEqual({key: value for key, value in answer.items() if key not in ("result", "scan")},
                          {"mode": "recorded", "available": True, "source": "recorded", "model": "claude-sonnet-5-5", "recorded_at": "2026-11-23",
-                          "label": "Recorded answer · claude-sonnet-5-5 · 2026-11-23", "notice": None, "reason": None})
+                          "label": "Recorded answer · claude-sonnet-5-5 · 2026-11-23", "notice": None, "reason": None, "engine": None})
         direct = stressing.run(TREE, STORY, understudy(), {}, "en", benchmark.truth_for(STORY, {}, H))
         self.assertEqual(json.loads(json.dumps(answer["result"])), json.loads(json.dumps(direct)))
         self.assertEqual(answer["result"]["verification"]["benchmark"]["route"], "story_a")
@@ -534,11 +545,48 @@ class TheModes(Offline):
                                            (STORY, {"loyer": 1500.0}, "en", "No recorded answer for this route with these assumptions."),
                                            (WORK, None, "fr", "Pas de réponse enregistrée pour ce trajet avec ces hypothèses.")):
             missing = service.stress(TREE, path, overrides, lang)
-            self.assertEqual(missing, {"mode": "recorded", "available": False, "source": None, "model": None, "recorded_at": None, "label": None, "notice": None,
-                                       "reason": why, "result": None})
+            self.assertEqual({key: value for key, value in missing.items() if key not in ("engine", "scan")},
+                             {"mode": "recorded", "available": False, "source": None, "model": None, "recorded_at": None, "label": None, "notice": None,
+                              "reason": why, "result": None})
         with self.assertRaises(ValueError) as refused, i18n.use("en"):
             service.stress(TREE, [{"block": "job", "years": 3}], None, "en")
         self.assertEqual(str(refused.exception), "The route covers 3 years: 10 are needed.")
+
+    def test_with_no_answer_of_the_model_the_engine_says_what_it_finds_on_its_own(self):
+        """A route with no recording: the screen is told so, and given what the engine finds with no model at all. That
+        part is the engine's and is never labelled as an answer."""
+        answer = service.stress(TREE, STORY, None, "en")
+        self.assertEqual((answer["available"], answer["source"], answer["label"], answer["result"], answer["reason"]),
+                         (False, None, None, None, "No recorded answer for this route with these assumptions."))
+        engine, direct = answer["engine"], stressing.Route(Tree(ALEXIA), STORY)
+        self.assertEqual(sorted(engine), ["calm", "single_crises", "space"])
+        self.assertEqual(engine["calm"], {"goals_kept": 3, "goals_total": 6, "peak_financing_chf": round(direct.calm.peak_financing_chf, 2),
+                                          "net_worth_end_chf": round(direct.calm.net_worth_end_chf, 2)})
+        single = engine["single_crises"]
+        self.assertEqual((single["scanned"], single["max_goals_lost"], [world["world"] for world in single["hardest"]], engine["space"]["worlds"]),
+                         (315, 2, ["chomage_long@27"], 49140))
+        self.assertEqual((single["hardest"][0]["name"], single["hardest"][0]["goals_lost_names"]), ("Long unemployment at 27", ["Career change", "Resilience"]))
+        # For a route of the benchmark, the full scan made offline, with the names of its hardest worlds.
+        scan = answer["scan"]
+        self.assertEqual((scan["route"], scan["worlds"], scan["max_goals_lost"], scan["hardest_count"], [world["world"] for world in scan["hardest"]][:1]),
+                         ("story_a", 49140, 3, 47, ["chomage_long@23+chomage_long@24"]))
+        self.assertEqual((scan["hardest"][0]["name"], scan["hardest"][0]["goals_lost_names"]),
+                         ("Long unemployment at 23 + long unemployment at 24", ["Emergency savings", "Career change", "Resilience"]))
+        # In French the names are French, and the figures are the same. Another route or other assumptions: no scan to cite.
+        french = service.stress(TREE, STORY, None, "fr")
+        self.assertEqual((french["engine"]["single_crises"]["hardest"][0]["name"], french["scan"]["hardest"][0]["name"]),
+                         ("Chômage long à 27 ans", "Chômage long à 23 ans + chômage long à 24 ans"))
+        self.assertEqual(french["engine"]["calm"], engine["calm"])
+        other = service.stress(TREE, STORY, {"loyer": 1500.0}, "en")
+        self.assertEqual((other["scan"], other["engine"]["single_crises"]["scanned"]), (None, 315))
+        # And what the engine finds on its own is found with her assumptions: with this rent the route keeps one goal less with no crisis.
+        self.assertEqual(other["engine"], stressing.alone(TREE, STORY, {"loyer": 1500.0}, "en"))
+        self.assertEqual((other["engine"]["calm"]["goals_kept"], other["engine"]["single_crises"]["max_goals_lost"]), (2, 1))
+        self.assertNotEqual(other["engine"]["calm"], engine["calm"])
+        # With an answer to show, the engine's own part is left out: the answer carries its own check of the search.
+        self.keep(recording_of("stress"))
+        shown = service.stress(TREE, STORY, None, "en")
+        self.assertEqual((shown["available"], shown["engine"], shown["scan"]["route"]), (True, None, "story_a"))
 
     def test_in_recorded_mode_a_sentence_is_answered_only_if_it_is_a_recorded_one(self):
         self.keep(recording_of("ask", "en", NINE), recording_of("ask", "fr", NEUF))
@@ -570,9 +618,9 @@ class TheModes(Offline):
         self.keep(recording_of("stress", recorded_at="2026-01-01"))
         self.live()
         answer = service.stress(TREE, STORY, None, "en")
-        self.assertEqual({key: value for key, value in answer.items() if key != "result"},
+        self.assertEqual({key: value for key, value in answer.items() if key not in ("result", "scan")},
                          {"mode": "live", "available": True, "source": "live", "model": "claude-sonnet-5-5", "recorded_at": None,
-                          "label": "Live answer · claude-sonnet-5-5", "notice": None, "reason": None})
+                          "label": "Live answer · claude-sonnet-5-5", "notice": None, "reason": None, "engine": None})
         self.assertEqual((answer["result"]["budget"]["worlds_tested"], answer["result"]["usage"]["input_tokens"]), (40, 6000))
         # For a route of the benchmark, the answer also carries what the full scan found, to hold the search against it.
         self.assertEqual((answer["result"]["verification"]["benchmark"]["route"], answer["result"]["verification"]["benchmark"]["max_goals_lost"]), ("story_a", 3))

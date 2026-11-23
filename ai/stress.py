@@ -490,6 +490,19 @@ def verify(route: Route, best: dict | None) -> dict:
             "as_hard_and_milder": bool(best) and most == found and bool(hardest) and hardest[0]["severity"] < best["severity"]}
 
 
+def alone(tree: Tree, path: list[dict], overrides: dict | None = None, lang: str | None = None) -> dict:
+    """What the engine says of a route with no model at all: the route with no crisis, and the engine's own scan of every
+    single crisis. It is what the screen shows when there is no answer of the model to show, and it is never labelled
+    as one."""
+    lang = lang or i18n.current()
+    route = Route(Tree(tree.sc), path, overrides)
+    with i18n.use(lang):
+        return {"space": V.describe(route.th, route.h, route.age0),
+                "calm": {"goals_kept": sum(route.calm_goals.values()), "goals_total": len(route.calm_goals),
+                         "peak_financing_chf": round(route.calm.peak_financing_chf, 2), "net_worth_end_chf": round(route.calm.net_worth_end_chf, 2)},
+                "single_crises": verify(route, None)}
+
+
 def run(tree: Tree, path: list[dict], model: Model, overrides: dict | None = None, lang: str | None = None,
         truth: dict | None = None) -> dict:
     """The whole stress test of a route. `truth`: for a route of the benchmark, the answer of the full scan made

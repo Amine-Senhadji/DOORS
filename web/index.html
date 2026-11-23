@@ -18,6 +18,17 @@
   </header>
 
   <section class="trip" aria-labelledby="trip-title">
+    <!-- The AI layer: one sentence to read, and the search for what breaks the route. The engine decides. -->
+    <div class="trip-row ai-row" id="ai-row" hidden>
+      <h2 id="ai-title"></h2>
+      <form class="ask" id="ask-form">
+        <input type="text" id="ask-input" autocomplete="off" spellcheck="false">
+        <button type="submit" class="pill" id="ask-read"></button>
+      </form>
+      <button type="button" class="link" id="ask-recorded" hidden></button>
+      <span class="mode" id="ai-mode"></span>
+      <button type="button" class="pill" id="stress"></button>
+    </div>
     <div class="trip-row">
       <h2 id="trip-title"></h2>
       <ol class="chips" id="chips"></ol>
@@ -52,6 +63,8 @@
   <aside class="drawer" id="drawer" hidden></aside>
   <dialog class="sheet wide" id="policies-sheet"></dialog>
   <dialog class="sheet wide" id="folk-sheet"></dialog>
+  <dialog class="sheet" id="ask-sheet"></dialog>
+  <dialog class="sheet wide" id="stress-sheet"></dialog>
 
   <script type="module" src="./app.js"></script>
 </body>

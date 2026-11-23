@@ -296,6 +296,98 @@ export const T = {
     refused: (message) => `No test for this route. ${message}`,
   },
 
+  // The AI layer: the model proposes and writes; the engine computes, ranks and checks. Every answer says where it comes from.
+  ai: {
+    title: 'Ask in your own words',
+    placeholder: 'What if I lost my job for 9 months at 27?',
+    field: 'One sentence about your route, a crisis, an assumption or your savings',
+    read: 'Read it',
+    stress: 'Find what breaks my plan',
+    live: (model) => `Live · ${model}`,
+    recorded: 'Recorded answers',
+    nothingRecorded: 'No answer recorded yet',
+    nothingHere: 'No answer recorded for this route',
+    sentences: (n) => plural(n, 'recorded sentence', 'recorded sentences'),
+    close: 'Close',
+    noAnswer: 'No answer of the model to show',
+    played: 'Outside the live mode, Doors plays real answers of the model again: each was recorded once, and is checked again on the engine before it is shown. '
+      + 'When there is none, nothing is made up.',
+    howTo: 'To get answers: record them with scripts/record_ai.py, or start the server in live mode.',
+    engine: 'The model proposes and writes. The engine computes, ranks and checks every figure.',
+  },
+
+  // "Ask in your own words": one sentence read into settings, shown before anything is computed.
+  ask: {
+    title: 'Ask in your own words',
+    waiting: 'Reading your sentence…',
+    pick: 'These sentences have a recorded answer for the route on screen:',
+    otherRoute: 'Sentences are recorded for another route or other assumptions, not for what is on screen.',
+    understood: 'Here is what I understood',
+    nothing: 'Nothing in this sentence that Doors can set',
+    intro: 'Nothing is computed yet. Keep, change or untick each setting, then compute.',
+    route: 'Route',
+    sameRoute: 'This is the route already on screen.',
+    crisis: (n) => (n > 1 ? 'Two crises in the same world' : 'Crisis'),
+    usual: (name, fields) => `${name}: you did not say ${list(fields)}. The engine takes its usual value.`,
+    fields: { age: 'the age', size: 'the size', years: 'the length', at_age: 'the age', value: 'the value', amount_chf: 'the amount' },
+    inferred: (fields) => `Not in your sentence: ${list(fields)}. Check it.`,
+    inferredFor: (name, fields) => `${name}: ${list(fields)} is not in your sentence. Check it.`,
+    toCheck: 'To check.',
+    before: (value, unit) => `On screen now: ${value} ${unit}.`,
+    sameValue: 'This is the value already on screen.',
+    savings: (age) => `Set aside at ${age}`,
+    notUnderstood: 'What Doors cannot set',
+    refused: 'What the engine refuses',
+    compute: 'Compute',
+    cancel: 'Cancel',
+    noneTicked: 'Nothing is ticked: there is nothing to compute.',
+  },
+
+  // "Find what breaks my plan": the worlds the model proposed, simulated and ranked by the engine.
+  stress: {
+    title: 'What breaks this route',
+    waiting: 'The model proposes worlds, the engine simulates each one. With the live model this takes a few minutes.',
+    budget: (calls, worlds, space) => `The model proposed ${plural(worlds, 'world', 'worlds')} in ${plural(calls, 'call', 'calls')}, out of ${space} possible worlds with one crisis or two. `
+      + 'The engine simulated each one and ranked them: the ranking is the engine’s, not the model’s.',
+    calm: (kept, total) => `With no crisis, this route keeps ${kept} of its ${total} goals. A goal is a station of the map.`,
+    nothing: 'None of the worlds tested makes this route lose a goal.',
+    lost: (names) => (names.length ? `${plural(names.length, 'goal lost', 'goals lost')}: ${list(names)}.` : 'No goal lost.'),
+    show: 'Show on the map',
+    explanation: 'Explanation written by the model',
+    rejected: 'The checker refused every text the model wrote for this world. Only the figures of the engine are shown.',
+    attempts: (n) => `Text accepted by the checker at attempt ${n}.`,
+    figures: 'Each figure of the text, and where the engine gave it:',
+    signpost: 'Signpost to watch, in the engine’s own words',
+    noSignpost: 'The engine has no signpost to watch for this world.',
+    checked: 'The engine checks the search',
+    single: {
+      harder: (scanned, lost) => `The engine simulated the ${scanned} single crises itself. At least one is harder than what the search found. The hardest make this route lose ${plural(lost, 'goal', 'goals')}:`,
+      milder: (scanned) => `The engine simulated the ${scanned} single crises itself. One breaks as much as what the search found, and is milder:`,
+      none: (scanned) => `The engine simulated the ${scanned} single crises itself. None is harder than what the search found.`,
+      alone: (scanned, lost) => (lost ? `The engine simulated the ${scanned} single crises itself. The hardest make this route lose ${plural(lost, 'goal', 'goals')}:`
+        : `The engine simulated the ${scanned} single crises itself. None makes this route lose a goal.`),
+    },
+    scan: (worlds, lost, count) => `For this route, every world with one crisis or two was simulated offline: ${worlds} worlds. `
+      + `The hardest make it lose ${plural(lost, 'goal', 'goals')}, and there are ${count} of them. The mildest of these:`,
+    scanFound: 'The search found a world as hard as the hardest of the full scan.',
+    scanMissed: 'The search did not find a world as hard as the hardest of the full scan.',
+    alone: 'What the engine finds on its own',
+    aloneHow: 'This is not an answer of the model: only the engine ran.',
+    details: 'Details: the path of the search',
+    call: (n) => `Call ${n}:`,
+    tested: (n) => plural(n, 'world simulated', 'worlds simulated'),
+    again: 'Already simulated',
+    refusedWorld: 'Refused by the engine',
+    notTested: (most, worlds) => `Not simulated, a call takes ${most} worlds at most: ${worlds}`,
+    stopped: {
+      budget: 'The search stopped when its calls were used up.',
+      model: 'The model ended the search itself.',
+      no_call: 'The model did not call the tool.',
+      refusal: 'The model declined the request.',
+    },
+    tokens: (sent, answered) => `Tokens: ${sent} sent, ${answered} answered.`,
+  },
+
   // The drawer: what proves, and what limits.
   drawer: {
     open: 'Assumptions & evidence',
