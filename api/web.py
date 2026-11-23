@@ -5,12 +5,17 @@ Ce fichier est séparé de api/main.py pour que les routes de calcul et l'interf
 """
 from __future__ import annotations
 
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 WEB = Path(__file__).resolve().parents[1] / "web"
+
+# The fonts of the page are .woff2 files. Python takes the types of files from the system (/etc/mime.types) and, in 3.12, does not know
+# this one by itself: a slim Linux image, such as the one of the container, would serve them as application/octet-stream.
+mimetypes.add_type("font/woff2", ".woff2")
 
 
 class Page(StaticFiles):

@@ -71,7 +71,7 @@ It also goes the other way. A long unemployment at 24 followed by a market crash
 ## How it is verified
 
 - **To the cent against the reference model.** The challenge's starter kit is a cash-only engine. With everything it does not have switched off through the assumptions (social contributions, tax, 2nd pillar, investments, interest), Doors gives the same 120 monthly balances, to the cent, on its three scenarios. No file of the engine is changed for this: see [`tests/test_vs_starter_kit.py`](tests/test_vs_starter_kit.py). The application runs the same comparison live, in its “Assumptions & evidence” drawer.
-- **453 tests**, run by `unittest` and by `pytest`, in about seven minutes. They include the pages themselves, read in headless Chrome in English and in French, and this README: every figure on this page is checked against the engine by [`tests/test_readme.py`](tests/test_readme.py).
+- **473 tests**, run by `unittest` and by `pytest`, in about seven minutes. They include the pages themselves, read in headless Chrome in English and in French, and this README: every figure on this page is checked against the engine by [`tests/test_readme.py`](tests/test_readme.py).
 - **Continuous integration.** Every push to `main` and every pull request runs both suites on GitHub Actions ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)): `unittest` and `pytest`, side by side, with the Google Chrome of the runner. Where there is no Chrome, the tests that read the page in a browser are skipped and the rest runs. No secret is needed: no test calls a model.
 - **Every franc is accounted for.** Each month has a ledger, and its accounting identities are checked in the tests and live in the drawer, on the route on screen with the assumptions on screen.
 - **The engine is deterministic.** A simulation draws nothing at random: same assumptions, same result, to the cent. The 200 crises that try the policies are drawn with a fixed seed.
@@ -109,7 +109,7 @@ Python 3.12 is the version the tests run on. From the root of the repository:
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m api                           # then open http://127.0.0.1:8000/
-.venv/bin/python -m unittest discover -s tests    # the 453 tests; .venv/bin/python -m pytest runs the same set
+.venv/bin/python -m unittest discover -s tests    # the 473 tests; .venv/bin/python -m pytest runs the same set
 ```
 
 - The interface is in English; add `?lang=fr` to the address for French. The figures are the same.
@@ -117,6 +117,33 @@ python3.12 -m venv .venv
 - The tests of the pages need Google Chrome; `CHROME_BIN` names it when it is not in one of the usual places. Without it they are skipped, each with its reason, and the rest runs: [`tests/test_browser.py`](tests/test_browser.py) hides the browser for real and checks that.
 - Addresses worth trying: `/?monde=krach@24` (the market crash at 24), `/?politiques=1` (the value table), `/?regle=1` (a widespread rule put to the test), `/?stress=1` and `/?ask=…` (the two sheets of the AI layer).
 - Live mode: `DOORS_AI=live ANTHROPIC_API_KEY=… .venv/bin/python -m api`. Before spending anything, `.venv/bin/python scripts/record_ai.py record --dry-run` shows what would be sent and what it would cost.
+
+## Deploy a demo on Render
+
+The repository is ready for a free online demo. Nothing is deployed from it: the deploy is done in Render, by whoever owns the account.
+
+- [`Dockerfile`](Dockerfile): Python 3.12.15 on a slim Debian 13 image, the dependencies of `requirements.txt`, and the server run by a user with no rights over the files. It listens on `0.0.0.0` and on the port in `$PORT`.
+- [`render.yaml`](render.yaml): a [Blueprint](https://render.com/docs/blueprint-spec) with one web service, on the free plan, built from that Dockerfile.
+- **No key and no secret.** The service starts in recorded mode (`DOORS_AI=recorded`): no request leaves it, and the AI sheets show the recorded answers, or say that there is none and show what the engine finds on its own. Nothing has to be configured in Render, and a key that was added to the environment would not change this.
+
+To deploy it:
+
+1. Push the repository to GitHub.
+2. In the Render dashboard, choose **New → Blueprint** and pick the repository. Render reads `render.yaml` and proposes one service, `doors`.
+3. Apply it. The first build takes a few minutes. Then the page is at the address that Render gives to the service.
+
+Later deploys follow the branch, but only once its checks pass (`autoDeployTrigger: checksPass`): the tests of the [workflow](.github/workflows/tests.yml) have to be green.
+
+**The free plan puts the service to sleep.** [Render spins a free web service down](https://render.com/docs/free) after 15 minutes without a request, and spins it up again at the next one. That takes about a minute, during which the browser shows a loading page: the first load of the demo is slow, and the next ones are not. The free plan gives the service [512 MB of memory and a tenth of a CPU](https://render.com/docs/compute-plans); the server holds less than 200 MB once every route of the page has been asked, and a test checks it.
+
+To try the container on your machine first, if you have Docker:
+
+```bash
+docker build -t doors .
+docker run --rm -p 8000:8000 doors              # then open http://127.0.0.1:8000/
+```
+
+Render sets the port itself, in `PORT`; `-e PORT=10000 -p 10000:10000` does the same here. [`tests/test_container.py`](tests/test_container.py) starts the server with the command of the Dockerfile, in the build context that `.dockerignore` leaves, and asks it for every route of the page. With `DOORS_TEST_DOCKER=1` it also builds the image.
 
 ## Architecture
 
@@ -151,6 +178,7 @@ The engine never calls a model, and the AI layer never computes a figure. The ch
 | [`ai/`](ai/) | The checker, the two functions, the live and recorded modes, the benchmark. |
 | [`tests/`](tests/) | The tests. `test_vs_starter_kit.py` is the equality with the reference model, `test_ai_screen.py` the AI layer read in Chrome. |
 | [`benchmarks/`](benchmarks/), [`scripts/`](scripts/) | The full scan and the random baseline, and the commands that make them, record answers and run the agent. |
+| [`Dockerfile`](Dockerfile), [`render.yaml`](render.yaml) | The container of the online demo, and its Render Blueprint. |
 | [`Data/`](Data/), [`starter-kit/`](starter-kit/) | The challenge's files, unchanged. |
 
 ## Limits

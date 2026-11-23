@@ -16,6 +16,7 @@ import html
 import re
 import socket
 import subprocess
+import sys
 import threading
 import time
 import unittest
@@ -133,15 +134,24 @@ class Served(unittest.TestCase):
         page = self.c.get("/")
         self.assertEqual(page.status_code, 200)
         self.assertIn('<html lang="en">', page.text)          # la page s'annonce en anglais ; ?lang=fr la passe en français
+        self.assertIn('<link rel="icon" type="image/svg+xml" href="./favicon.svg">', page.text)      # son icône : sans elle, chaque visite demande /favicon.ico et reçoit un 404
         for path, kind in [("/app.js", "javascript"), ("/api.js", "javascript"), ("/map.js", "javascript"),
                            ("/card.js", "javascript"), ("/i18n.js", "javascript"), ("/texts.en.js", "javascript"),
-                           ("/texts.fr.js", "javascript"), ("/style.css", "text/css"),
+                           ("/texts.fr.js", "javascript"), ("/style.css", "text/css"), ("/favicon.svg", "image/svg+xml"),
                            ("/vendor/barlow/barlow-latin-400-normal.woff2", "font/woff2")]:
             with self.subTest(path=path):
                 response = self.c.get(path)
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(kind, response.headers["content-type"])
                 self.assertEqual(response.headers["cache-control"], "no-store")
+
+    def test_the_font_type_is_known_even_where_the_system_knows_no_types_of_files(self):
+        """A slim Linux image has no /etc/mime.types, and Python 3.12 does not know .woff2: without what api/web.py says,
+        the fonts would be served as application/octet-stream. Here a fresh interpreter, told that the system knows nothing."""
+        code = ("import mimetypes\nmimetypes.knownfiles = []\n"
+                "import api.web\nprint(mimetypes.guess_type('barlow.woff2')[0])\nprint(mimetypes.guess_type('style.css')[0])")
+        shown = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+        self.assertEqual(shown, ["font/woff2", "text/css"])
 
     def test_the_page_does_not_hide_the_routes_of_the_engine(self):
         self.assertEqual(app.routes[-1].name, "web", "Le service de la page doit rester la dernière route déclarée")

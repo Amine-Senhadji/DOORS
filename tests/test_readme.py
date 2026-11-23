@@ -46,6 +46,9 @@ MASTER = {"termine": "master's finished at {age}", "pas_commence": "master's not
 REPOSITORY = "Amine-Senhadji/DOORS"                                  # where the repository is, as the badge says
 WORKFLOW_PAGE = f"https://github.com/{REPOSITORY}/actions/workflows/tests.yml"
 BADGE = f"{WORKFLOW_PAGE}/badge.svg?branch=main"
+# What the page says of Render, and where it comes from: the documentation of Render, read on 2026-11-23. A free web service
+# spins down after 15 minutes without a request and spins up again in about a minute; the plan has 0.1 CPU and 512 MB.
+RENDER = {"blueprint": "https://render.com/docs/blueprint-spec", "free": "https://render.com/docs/free", "plans": "https://render.com/docs/compute-plans"}
 ROUTES = {"story_a": "Demo route", "work_only": "Ten years of work in Lausanne", "berlin": "Ten years in Berlin"}
 
 
@@ -98,7 +101,8 @@ class ThePage(unittest.TestCase):
                 self.assertFalse(target.startswith(("http:", "/")), "a link of the page leaves the repository")
                 self.assertTrue((ROOT / target.split("#")[0]).exists())
         # Outside the repository, the page only points to the profile of the challenge author, and to the workflow of its badge.
-        self.assertEqual({target for target in targets if target.startswith("https://")}, {"https://www.linkedin.com/in/stefania-s/", BADGE, WORKFLOW_PAGE})
+        self.assertEqual({target for target in targets if target.startswith("https://")},
+                         {"https://www.linkedin.com/in/stefania-s/", BADGE, WORKFLOW_PAGE, *RENDER.values()})
 
     def test_the_badge_stands_under_the_title_and_is_the_one_of_the_workflow_of_the_repository(self):
         lines = PAGE.splitlines()
@@ -270,6 +274,35 @@ class TheFiguresOfTheEngine(unittest.TestCase):
         # And the other way: a long unemployment, then a market crash, cost less than their sum.
         alone, together = round(gap("chomage_long@24") + gap("krach@25"), 2), gap("chomage_long@24+krach@25")
         self.assertIn(f"costs {cents(-together)} CHF, which is {cents(round(together - alone, 2))} CHF less than the sum of the two taken alone", FLAT)
+
+    def test_the_section_on_render_says_what_the_files_of_the_container_say(self):
+        import test_container as container
+        section = " ".join(PAGE.split("## Deploy a demo on Render\n", 1)[1].split("## Architecture", 1)[0].split())
+        image = [rest for keyword, rest in container.instructions() if keyword == "FROM"][0]                  # python:3.12.15-slim-trixie
+        version, _, release = image.removeprefix("python:").partition("-slim-")
+        debian = {"trixie": "13"}[release]                                                                    # the name of the release, and its number
+        self.assertEqual(version, "3.12.15")
+        self.assertIn(f"Python {version} on a slim Debian {debian} image", section)
+        self.assertIn("It listens on `0.0.0.0` and on the port in `$PORT`.", section)
+        self.assertIn("--host 0.0.0.0 --port ${PORT}", container.start_command())
+        self.assertEqual((container.environment_of_the_image()["DOORS_AI"], container.environment_of_the_image()["PORT"]), ("recorded", "8000"))
+        self.assertIn("value: recorded", container.BLUEPRINT)                                                 # and the blueprint sets the same mode
+        for words in ("[Blueprint](https://render.com/docs/blueprint-spec) with one web service, on the free plan, built from that Dockerfile.",
+                      "The service starts in recorded mode (`DOORS_AI=recorded`)",
+                      "Render reads `render.yaml` and proposes one service, `doors`.",
+                      "(`autoDeployTrigger: checksPass`): the tests of the [workflow](.github/workflows/tests.yml) have to be green.",
+                      "[Render spins a free web service down](https://render.com/docs/free) after 15 minutes without a request",
+                      "That takes about a minute, during which the browser shows a loading page: the first load of the demo is slow, and the next ones are not.",
+                      "[512 MB of memory and a tenth of a CPU](https://render.com/docs/compute-plans)",
+                      "docker build -t doors .", "docker run --rm -p 8000:8000 doors",                         # the port of the container is the one of the Dockerfile
+                      "`-e PORT=10000 -p 10000:10000` does the same here.", "With `DOORS_TEST_DOCKER=1` it also builds the image."):
+            with self.subTest(words=words[:60]):
+                self.assertIn(words, section)
+        self.assertIn("    name: doors\n", container.BLUEPRINT)                                                   # the service that Render proposes
+        self.assertIn("autoDeployTrigger: checksPass", container.BLUEPRINT)
+        # The memory the page says the server holds is the limit that a test of the container checks, and the plan's memory is Render's.
+        self.assertIn(f"the server holds less than {container.HOLDS_LESS_THAN_MB} MB once every route of the page has been asked, and a test checks it.", section)
+        self.assertEqual(container.FREE_PLAN_MB, 512)
 
     def test_the_routes_the_page_names_are_served(self):
         for route in ("/path", "/node", "/pathways", "/policies", "/worlds", "/ai/stress", "/ai/ask"):

@@ -1,0 +1,31 @@
+# What the image does not need, or must not hold. The paths are the ones of the build context, which is the root of the
+# repository: `**/` is how a name is excluded at any depth.
+#
+# The server reads engine/, api/, ai/, web/, Data/, starter-kit/, benchmarks/ and docs/LIMITS*: all of them stay in.
+# So does tests/: the "Assumptions & evidence" drawer re-runs the equality with the starter kit live, and what it runs is
+# tests/test_vs_starter_kit.py, on the server itself. Without that folder the check would fail on the demo.
+
+# The history, the environment of this machine and its caches.
+.git
+.github
+.venv
+.env
+.env.*
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+**/.DS_Store
+
+# Local reports: what the live commands and their dry runs write on a machine, and the coverage reports. None is
+# part of what the server serves.
+reports
+benchmarks/*.tmp
+
+# Not run by the server: the scripts that record answers, run the benchmark and make the picture, the pictures of the
+# documents, and the files of this very configuration.
+scripts
+docs/screenshots
+docs/demo.gif
+Dockerfile
+.dockerignore
+render.yaml

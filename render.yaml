@@ -1,0 +1,20 @@
+# Render Blueprint for a free online demo of Doors: one web service, built from the Dockerfile of this repository.
+# Nothing is deployed from here. Render reads this file when the repository is connected as a Blueprint
+# (see "Deploy a demo on Render" in the README).
+#
+# No key and no secret: the demo runs in recorded mode, and no request leaves the service.
+services:
+  - type: web
+    name: doors
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # The server listens on every interface (0.0.0.0), on the port that Render gives it in $PORT.
+    dockerCommand: sh -c "exec python -m api --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /ai/status
+    # A deploy follows the branch, but only once its checks pass: the tests of .github/workflows/tests.yml.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DOORS_AI
+        value: recorded
