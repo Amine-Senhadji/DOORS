@@ -3,11 +3,23 @@ Doors
 
 Built for the UBS AI Financial Twin Challenge (LauzHack 2026). An independent project: see DISCLAIMER.md.
 
+Authors
+-------
+Amine Senhadji
+Co-author: [à confirmer]
+
+The engine in `engine/` was co-written with a teammate during the hackathon.
+
+Licence of the project's own code
+---------------------------------
+MIT: see LICENSE, and its note about the engine. The licence covers the project's own code and documents. It does
+not cover the challenge material and the fonts listed below.
+
 Challenge material, included unchanged
 --------------------------------------
-The synthetic data in `Data/` and the starter kit in `starter-kit/` were produced by [Nom] ([lien LinkedIn]),
-challenge author and information owner. They are included with her permission. They are not covered by the
-licence of this project's own code, and they are not ours to relicense.
+The synthetic data in `Data/` and the starter kit in `starter-kit/` were produced by Stefania Stan
+(https://www.linkedin.com/in/stefania-s/), challenge author and information owner. They are included with her
+permission. They are not covered by the licence of this project's own code, and they are not ours to relicense.
 
 A few figures of the fictional persona (savings, rent, goals) and of the starter kit (salaries, expenses) are
 quoted in `engine/assumptions.py` and `engine/scenarios/alexia.json`, each with its source file.
@@ -20,3 +32,21 @@ Fonts
 -----
 Barlow and Barlow Condensed, in `web/vendor/barlow/`, are distributed under the SIL Open Font License 1.1.
 See `web/vendor/barlow/LICENSE` and `web/vendor/barlow/LICENSE-condensed`.
+
+Software this project needs, and does not include
+-------------------------------------------------
+The Python packages listed in `requirements.txt` (FastAPI, Uvicorn, HTTPX, pytest and the Anthropic SDK) are
+installed by whoever runs the project, each under its own licence. None of them is copied into this repository.
+The engine itself uses the Python standard library only.
+
+The AI layer and the model
+--------------------------
+The server in live mode, and the scripts that record answers or run the benchmark, call a model of Anthropic
+through its API, with the key of whoever runs them. No model and no key is part of this repository.
+`ai/recorded/` is where answers of that model are kept once they have been recorded: its README says how they are
+made, and how they are played again and checked.
+
+Still to complete
+-----------------
+- Co-author: [à confirmer]. His name is written here once he has agreed to be named.
+- His agreement to the MIT licence for `engine/`: see the note in LICENSE, to be removed once it is given.

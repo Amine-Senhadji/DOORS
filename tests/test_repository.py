@@ -35,6 +35,10 @@ ALLOWED = ("UBS AI Financial Twin Challenge", "not affiliated with, endorsed by,
 BANK = re.compile(r"\bU" r"BS\b", re.IGNORECASE)
 # La forme d'une clé de l'API, écrite en deux morceaux pour que ce fichier n'en contienne pas une lui-même.
 KEY = re.compile("sk-" + r"ant-[A-Za-z0-9_\-]{12,}")
+# L'autrice du défi, telle qu'elle est créditée : son nom et son lien.
+AUTHOR = ("Stefania Stan", "https://www.linkedin.com/in/stefania-s/")
+# Les emplacements qui tenaient la place de ce nom et de ce lien, écrits en deux morceaux pour que ce fichier ne les contienne pas.
+BLANKS = ("[" + "Nom]", "[lien " + "LinkedIn]")
 LOCAL = re.compile(r"/Us" r"ers/|/ho" r"me/[a-z]|[\w.+-]+@(?!users\.noreply\.github\.com|anthropic\.com)[\w-]+\.(?:com|ch|org|fr|net)\b")
 
 
@@ -65,11 +69,45 @@ class Repository(unittest.TestCase):
                 self.assertIsNone(BANK.search(text))
 
     def test_the_credits_and_the_disclaimer_are_there(self):
-        disclaimer = (ROOT / "DISCLAIMER.md").read_text(encoding="utf-8")
+        disclaimer, notice = (" ".join((ROOT / name).read_text(encoding="utf-8").split()) for name in ("DISCLAIMER.md", "NOTICE"))
         for phrase in ("built for the UBS AI Financial Twin Challenge (LauzHack 2026)", "not affiliated with, endorsed by, or reviewed by UBS",
                        "challenge author and information owner", "included with her permission", "Nothing in this project is financial advice"):
             self.assertIn(phrase, disclaimer)
-        self.assertIn("challenge author", (ROOT / "NOTICE").read_text(encoding="utf-8"))
+        # L'autrice du défi est nommée, avec son lien, partout où ses fichiers sont crédités.
+        for text in (disclaimer, notice):
+            for part in AUTHOR + ("challenge author and information owner",):
+                self.assertIn(part, text)
+        for phrase in ("They are included with her permission.", "They are not covered by the licence of this project's own code, and they are not ours to relicense.",
+                       "SIL Open Font License 1.1"):
+            self.assertIn(phrase, notice)
+
+    def test_the_licence_is_mit_for_our_code_with_its_note_about_the_engine(self):
+        """La licence MIT, au nom d'Amine Senhadji, pour notre code seulement. Le moteur est co-écrit : l'accord du
+        coéquipier est attendu, et la licence le dit."""
+        licence = (ROOT / "LICENSE").read_text(encoding="utf-8")
+        self.assertTrue(licence.startswith("MIT License\n\nCopyright (c) 2026 Amine Senhadji\n"))
+        flat = " ".join(licence.split())
+        for phrase in ("Permission is hereby granted, free of charge, to any person obtaining a copy of this software",
+                       'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND',
+                       "The engine (`engine/`) was co-written with a teammate, whose agreement to this licence is awaited.",
+                       "It does not cover the challenge material in `Data/` and `starter-kit/`, nor the fonts in `web/vendor/barlow/`: see NOTICE."):
+            self.assertIn(phrase, flat)
+        self.assertIn("MIT: see LICENSE, and its note about the engine.", (ROOT / "NOTICE").read_text(encoding="utf-8"))
+
+    def test_what_is_still_to_complete_is_plain_to_see_and_nothing_else_is_left_blank(self):
+        """Ce qui reste à compléter avant la publication est écrit en clair dans NOTICE : le nom du co-auteur et son
+        accord. Le nom et le lien de l'autrice du défi, eux, sont remplis partout."""
+        notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
+        self.assertIn("\nCo-author: [à confirmer]\n", notice)
+        self.assertIn("Still to complete\n-----------------\n- Co-author: [à confirmer].", notice)
+        self.assertIn("- His agreement to the MIT licence for `engine/`: see the note in LICENSE", notice)
+        waiting = [str(file.relative_to(ROOT)) for file in ours() if "[à confirmer]" in file.read_text(encoding="utf-8") and file.name != "test_repository.py"]
+        self.assertEqual(waiting, ["NOTICE"])
+        for file in ours():
+            text = file.read_text(encoding="utf-8")
+            with self.subTest(file=str(file.relative_to(ROOT))):
+                for blank in BLANKS:
+                    self.assertNotIn(blank, text)
 
     def test_no_local_path_and_no_personal_address_is_left_in_our_files(self):
         for file in ours():
