@@ -128,6 +128,13 @@ frame.src = params.get('page');
 OPEN_DRAWER = """
         $('#drawer-open').click();
         await until(() => $('.assumption[data-key="loyer"]'));"""
+# What the page sends to the engine with its request for the route: the assumptions, kept where the test reads them.
+SENT = """
+        const page = doc.defaultView, real = page.fetch;
+        page.fetch = (address, options) => {
+          if (String(address).startsWith('/path?')) doc.body.dataset.sent = JSON.stringify(JSON.parse(options.body).assumptions);
+          return real(address, options);
+        };"""
 # The route cannot be computed any more: the server no longer answers that one request.
 BROKEN = """
         const page = doc.defaultView, real = page.fetch;
@@ -752,12 +759,14 @@ class WithHerHands(Screen):
         shown = sheet(self.read(sentence, pick), "ask")
         self.assertRegex(shown, rf'<input type="number" step="any" min="0" max="100" class="num" data-key="{RETURN}" value="5" required="">')
         self.assertRegex(shown, r'<input type="radio" name="reading-[a-z_]+" value="5" checked="">5%</label>')
-        picked = self.read(sentence, f"""{pick}
+        compute = f"""
         $('#ask-compute').click();
-        await closed('ask');{OPEN_DRAWER}""")
-        left = self.after(f"?ask={quote(sentence)}&compute=1", OPEN_DRAWER)
+        await closed('ask');{OPEN_DRAWER}"""
+        picked, left = self.read(sentence, SENT + pick + compute), self.read(sentence, SENT + compute)
+        # What goes to the engine with the request for the route: the reading she picked, as a rate. Left as it is: the reading of the drawer.
+        self.assertEqual((json.loads(marker(picked, "sent")), json.loads(marker(left, "sent"))), ({RETURN: 0.05}, {RETURN: 0.0005}))
         self.assertEqual((assumption(picked, RETURN), marker(picked, "overrides")), ((True, "5"), "1"))              # 5 %/year
-        self.assertEqual((assumption(left, RETURN), marker(left, "overrides")), ((True, "0.05"), "1"))               # 0.05 %/year: the reading of the drawer
+        self.assertEqual((assumption(left, RETURN), marker(left, "overrides")), ((True, "0.05"), "1"))               # 0.05 %/year
         five, drawer = (row_of(TREE.path_view(STORY, "reference", {RETURN: rate}, ["reference"])) for rate in (0.05, 0.0005))
         self.assertNotEqual(five, drawer)
         self.assertIn(five, text(picked))
