@@ -9,11 +9,16 @@ Amine Senhadji
 Co-author: [à confirmer]
 
 The engine in `engine/` was co-written with a teammate during the hackathon.
+Interface, decision policies, AI layer and portfolio: Amine Senhadji.
 
 Licence of the project's own code
 ---------------------------------
-MIT: see LICENSE, and its note about the engine. The licence covers the project's own code and documents. It does
-not cover the challenge material and the fonts listed below.
+MIT: see LICENSE. Two notes go with it:
+
+1. The engine (`engine/`) was co-written with a teammate, whose agreement to this licence is awaited. This note
+   will be removed once it is given.
+2. The licence covers the project's own code and documents. It does not cover the challenge material in `Data/`
+   and `starter-kit/`, nor the fonts in `web/vendor/barlow/`, which are listed below.
 
 Challenge material, included unchanged
 --------------------------------------
@@ -49,4 +54,5 @@ made, and how they are played again and checked.
 Still to complete
 -----------------
 - Co-author: [à confirmer]. His name is written here once he has agreed to be named.
-- His agreement to the MIT licence for `engine/`: see the note in LICENSE, to be removed once it is given.
+- His agreement to the MIT licence for `engine/`: see the first note under "Licence of the project's own code",
+  to be removed once it is given.

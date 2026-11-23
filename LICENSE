@@ -19,13 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
---------------------------------------------------------------------------------
-Notes. They are not part of the licence text above.
-
-1. The engine (`engine/`) was co-written with a teammate, whose agreement to
-   this licence is awaited. This note will be removed once it is given.
-
-2. This licence covers the project's own code and documents. It does not cover
-   the challenge material in `Data/` and `starter-kit/`, nor the fonts in
-   `web/vendor/barlow/`: see NOTICE.

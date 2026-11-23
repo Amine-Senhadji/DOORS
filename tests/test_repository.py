@@ -81,18 +81,22 @@ class Repository(unittest.TestCase):
                        "SIL Open Font License 1.1"):
             self.assertIn(phrase, notice)
 
-    def test_the_licence_is_mit_for_our_code_with_its_note_about_the_engine(self):
-        """La licence MIT, au nom d'Amine Senhadji, pour notre code seulement. Le moteur est co-écrit : l'accord du
-        coéquipier est attendu, et la licence le dit."""
+    def test_the_licence_is_the_mit_text_alone_and_its_two_notes_are_in_the_notice(self):
+        """LICENSE ne contient que le texte MIT, au nom d'Amine Senhadji : rien avant, rien après. Ce qu'il faut savoir
+        en plus est dans NOTICE : le moteur est co-écrit et l'accord du coéquipier est attendu ; la licence ne couvre
+        ni les fichiers du défi ni les polices."""
         licence = (ROOT / "LICENSE").read_text(encoding="utf-8")
-        self.assertTrue(licence.startswith("MIT License\n\nCopyright (c) 2026 Amine Senhadji\n"))
-        flat = " ".join(licence.split())
-        for phrase in ("Permission is hereby granted, free of charge, to any person obtaining a copy of this software",
-                       'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND',
-                       "The engine (`engine/`) was co-written with a teammate, whose agreement to this licence is awaited.",
-                       "It does not cover the challenge material in `Data/` and `starter-kit/`, nor the fonts in `web/vendor/barlow/`: see NOTICE."):
-            self.assertIn(phrase, flat)
-        self.assertIn("MIT: see LICENSE, and its note about the engine.", (ROOT / "NOTICE").read_text(encoding="utf-8"))
+        self.assertTrue(licence.startswith("MIT License\n\nCopyright (c) 2026 Amine Senhadji\n\nPermission is hereby granted, free of charge, to any person"))
+        self.assertTrue(licence.endswith("OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"))
+        self.assertEqual((len(licence.split()), licence.count("Copyright"), licence.count("engine")), (169, 1, 0))
+        notice = " ".join((ROOT / "NOTICE").read_text(encoding="utf-8").split())
+        for phrase in ("MIT: see LICENSE. Two notes go with it:",
+                       "1. The engine (`engine/`) was co-written with a teammate, whose agreement to this licence is awaited.",
+                       "2. The licence covers the project's own code and documents. It does not cover the challenge material in `Data/` and `starter-kit/`, "
+                       "nor the fonts in `web/vendor/barlow/`",
+                       "The engine in `engine/` was co-written with a teammate during the hackathon. "
+                       "Interface, decision policies, AI layer and portfolio: Amine Senhadji."):
+            self.assertIn(phrase, notice)
 
     def test_what_is_still_to_complete_is_plain_to_see_and_nothing_else_is_left_blank(self):
         """Ce qui reste à compléter avant la publication est écrit en clair dans NOTICE : le nom du co-auteur et son
@@ -100,7 +104,7 @@ class Repository(unittest.TestCase):
         notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
         self.assertIn("\nCo-author: [à confirmer]\n", notice)
         self.assertIn("Still to complete\n-----------------\n- Co-author: [à confirmer].", notice)
-        self.assertIn("- His agreement to the MIT licence for `engine/`: see the note in LICENSE", notice)
+        self.assertIn("- His agreement to the MIT licence for `engine/`: see the first note under", notice)
         waiting = [str(file.relative_to(ROOT)) for file in ours() if "[à confirmer]" in file.read_text(encoding="utf-8") and file.name != "test_repository.py"]
         self.assertEqual(waiting, ["NOTICE"])
         for file in ours():
