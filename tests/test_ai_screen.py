@@ -27,6 +27,7 @@ from urllib.parse import quote
 
 from ai import benchmark, recordings, service
 from ai import stress as stressing
+import browser
 from engine import tree
 from engine.blocks import normalize
 from engine.simulate import load_scenario
@@ -51,8 +52,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ALEXIA = load_scenario(ROOT / "engine/scenarios/alexia.json")
 TREE = Tree(ALEXIA)
 STORY = normalize(benchmark.ROUTES["story_a"], ALEXIA.horizon_months)
-CHROME = next((p for p in ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                           shutil.which("google-chrome") or "", shutil.which("chromium") or ""] if p and Path(p).exists()), None)
+CHROME = browser.CHROME
 SHAPED = "sk-" + "ant-" + "api03-" + "k" * 60          # the shape of a key, put together here: it is not one
 EN, FR = understudy.SENTENCES["en"], understudy.SENTENCES["fr"]
 LABEL = "Recorded answer · claude-sonnet-5-5 · 2026-11-23"
@@ -93,7 +93,7 @@ const pause = async (rounds = 1) => {
   }
 };
 const until = async (test) => {
-  for (let round = 0; round < 400; round += 1) {
+  for (let round = 0; round < 1200; round += 1) {
     if (test()) return;
     await pause();
   }
@@ -260,8 +260,8 @@ class Screen(unittest.TestCase):
         with folder, mock.patch.dict(os.environ, {"DOORS_AI": "recorded", **{name: value for name, value in environment.items() if value is not None}}):
             for name in (name for name, value in environment.items() if value is None):
                 os.environ.pop(name, None)
-            dom = subprocess.run([CHROME, "--headless=new", "--window-size=1440,900", "--virtual-time-budget=12000", "--dump-dom",
-                                  f"http://127.0.0.1:{self.port}/{address}"], capture_output=True, text=True, timeout=120).stdout
+            dom = subprocess.run(browser.command("--window-size=1440,900", "--virtual-time-budget=12000", "--dump-dom", f"http://127.0.0.1:{self.port}/{address}"),
+                                 capture_output=True, text=True, timeout=120).stdout
         self.assertNotIn(SHAPED, dom)
         return dom
 

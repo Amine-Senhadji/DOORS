@@ -43,6 +43,9 @@ STORY = normalize(benchmark.ROUTES["story_a"], H)       # the demo route: job fi
 WORK = normalize(benchmark.ROUTES["work_only"], H)      # ten years of work in Lausanne
 MASTER = {"termine": "master's finished at {age}", "pas_commence": "master's not started", "arrete": "master's stopped at {age}",
           "termine_en_travaillant": "master's finished at {age}, while working"}
+REPOSITORY = "Amine-Senhadji/DOORS"                                  # where the repository is, as the badge says
+WORKFLOW_PAGE = f"https://github.com/{REPOSITORY}/actions/workflows/tests.yml"
+BADGE = f"{WORKFLOW_PAGE}/badge.svg?branch=main"
 ROUTES = {"story_a": "Demo route", "work_only": "Ten years of work in Lausanne", "berlin": "Ten years in Berlin"}
 
 
@@ -94,8 +97,26 @@ class ThePage(unittest.TestCase):
                     continue
                 self.assertFalse(target.startswith(("http:", "/")), "a link of the page leaves the repository")
                 self.assertTrue((ROOT / target.split("#")[0]).exists())
-        # Outside the repository, the page only points to the profile of the challenge author.
-        self.assertEqual({target for target in targets if target.startswith("https://")}, {"https://www.linkedin.com/in/stefania-s/"})
+        # Outside the repository, the page only points to the profile of the challenge author, and to the workflow of its badge.
+        self.assertEqual({target for target in targets if target.startswith("https://")}, {"https://www.linkedin.com/in/stefania-s/", BADGE, WORKFLOW_PAGE})
+
+    def test_the_badge_stands_under_the_title_and_is_the_one_of_the_workflow_of_the_repository(self):
+        lines = PAGE.splitlines()
+        self.assertEqual(lines[0], "# Doors")
+        self.assertEqual(lines[2], f"[![tests]({BADGE})]({WORKFLOW_PAGE})")
+        self.assertTrue(lines[4].startswith("**Doors is a financial twin that computes policies, not plans"))           # the hook, then the picture
+        self.assertTrue(lines[6].startswith("![Fifteen seconds of Doors"))
+        # The badge names the file of the workflow, the branch it shows, and the name the workflow gives itself.
+        workflow = ROOT / ".github/workflows/tests.yml"
+        self.assertTrue(workflow.is_file())
+        self.assertEqual(BADGE, f"https://github.com/{REPOSITORY}/actions/workflows/{workflow.name}/badge.svg?branch=main")
+        self.assertIn("\nname: tests\n", workflow.read_text(encoding="utf-8"))
+        self.assertIn("branches: [main]", workflow.read_text(encoding="utf-8"))
+        for words in ("Every push to `main` and every pull request runs both suites on GitHub Actions ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)): "
+                      "`unittest` and `pytest`, side by side, with the Google Chrome of the runner.",
+                      "Where there is no Chrome, the tests that read the page in a browser are skipped and the rest runs. No secret is needed: no test calls a model.",
+                      "`CHROME_BIN` names it when it is not in one of the usual places."):
+            self.assertIn(words, FLAT)
 
     def test_every_line_of_a_table_has_as_many_cells_as_its_head(self):
         tables, lines = [], PAGE.splitlines()

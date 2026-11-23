@@ -1,5 +1,7 @@
 # Doors
 
+[![tests](https://github.com/Amine-Senhadji/DOORS/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Amine-Senhadji/DOORS/actions/workflows/tests.yml)
+
 **Doors is a financial twin that computes policies, not plans: it does not tell Alexia what her next ten years will be, it tells her what to watch, when, and what to do if it happens.**
 
 ![Fifteen seconds of Doors: Alexia's plan, a market crash at 24, the goal “Career change” turning red, the signpost at 26, and the value table](docs/demo.gif)
@@ -69,7 +71,8 @@ It also goes the other way. A long unemployment at 24 followed by a market crash
 ## How it is verified
 
 - **To the cent against the reference model.** The challenge's starter kit is a cash-only engine. With everything it does not have switched off through the assumptions (social contributions, tax, 2nd pillar, investments, interest), Doors gives the same 120 monthly balances, to the cent, on its three scenarios. No file of the engine is changed for this: see [`tests/test_vs_starter_kit.py`](tests/test_vs_starter_kit.py). The application runs the same comparison live, in its “Assumptions & evidence” drawer.
-- **436 tests**, run by `unittest` and by `pytest`, in about seven minutes. They include the pages themselves, read in headless Chrome in English and in French, and this README: every figure on this page is checked against the engine by [`tests/test_readme.py`](tests/test_readme.py).
+- **453 tests**, run by `unittest` and by `pytest`, in about seven minutes. They include the pages themselves, read in headless Chrome in English and in French, and this README: every figure on this page is checked against the engine by [`tests/test_readme.py`](tests/test_readme.py).
+- **Continuous integration.** Every push to `main` and every pull request runs both suites on GitHub Actions ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)): `unittest` and `pytest`, side by side, with the Google Chrome of the runner. Where there is no Chrome, the tests that read the page in a browser are skipped and the rest runs. No secret is needed: no test calls a model.
 - **Every franc is accounted for.** Each month has a ledger, and its accounting identities are checked in the tests and live in the drawer, on the route on screen with the assumptions on screen.
 - **The engine is deterministic.** A simulation draws nothing at random: same assumptions, same result, to the cent. The 200 crises that try the policies are drawn with a fixed seed.
 - **The challenge's catalogue of 120 scenarios**: 98 run (56 modelled, 42 approximated, with the approximation written down) and 22 are not covered, each with the operation that is missing. See [`reports/coverage.md`](reports/coverage.md), in French.
@@ -106,12 +109,12 @@ Python 3.12 is the version the tests run on. From the root of the repository:
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m api                           # then open http://127.0.0.1:8000/
-.venv/bin/python -m unittest discover -s tests    # the 436 tests; .venv/bin/python -m pytest runs the same set
+.venv/bin/python -m unittest discover -s tests    # the 453 tests; .venv/bin/python -m pytest runs the same set
 ```
 
 - The interface is in English; add `?lang=fr` to the address for French. The figures are the same.
 - Nothing is loaded from the internet: the fonts are in the repository, and the AI layer starts in recorded mode.
-- The tests of the pages need Google Chrome. Without it they are skipped, and the rest runs.
+- The tests of the pages need Google Chrome; `CHROME_BIN` names it when it is not in one of the usual places. Without it they are skipped, each with its reason, and the rest runs: [`tests/test_browser.py`](tests/test_browser.py) hides the browser for real and checks that.
 - Addresses worth trying: `/?monde=krach@24` (the market crash at 24), `/?politiques=1` (the value table), `/?regle=1` (a widespread rule put to the test), `/?stress=1` and `/?ask=…` (the two sheets of the AI layer).
 - Live mode: `DOORS_AI=live ANTHROPIC_API_KEY=… .venv/bin/python -m api`. Before spending anything, `.venv/bin/python scripts/record_ai.py record --dry-run` shows what would be sent and what it would cost.
 

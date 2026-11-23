@@ -14,6 +14,7 @@ import unittest
 from dataclasses import fields
 from pathlib import Path
 
+import browser
 from engine import english, i18n
 from engine import worlds as W
 from engine.assumptions import ASSUMPTIONS
@@ -227,7 +228,8 @@ class Routes(unittest.TestCase):
             i18n.set_default("de")
 
 
-@unittest.skipIf(TestClient is None or test_web.CHROME is None, "Chrome non installé")
+@unittest.skipIf(TestClient is None, "FastAPI non installé : .venv/bin/pip install -r requirements.txt")
+@browser.needed
 class PageInChrome(unittest.TestCase):
     """La page s'ouvre en anglais ; ?lang=fr la passe en français. Les chiffres affichés sont ceux de l'API dans les deux cas."""
 

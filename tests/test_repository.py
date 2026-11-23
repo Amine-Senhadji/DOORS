@@ -119,6 +119,50 @@ class Repository(unittest.TestCase):
                 self.assertIsNone(LOCAL.search(file.read_text(encoding="utf-8")))
 
 
+class ContinuousIntegration(unittest.TestCase):
+    """The workflow of GitHub Actions: both suites, on every push to main and every pull request, with no secret and
+    no model. It cannot be run from here: what is checked is what it says, line by line."""
+    WORKFLOW = ROOT / ".github/workflows/tests.yml"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = cls.WORKFLOW.read_text(encoding="utf-8")
+        cls.lines = [line.strip() for line in cls.text.splitlines() if not line.strip().startswith("#")]
+
+    def test_both_suites_run_on_every_push_to_main_and_every_pull_request(self):
+        for line in ("name: tests", "push:", "branches: [main]", "pull_request:", "workflow_dispatch:", "fail-fast: false",
+                     "- suite: unittest", "run: python -m unittest discover -s tests", "- suite: pytest", "run: python -m pytest -p no:cacheprovider -rs",
+                     "run: ${{ matrix.run }}", "run: python -m pip install -r requirements.txt", 'python-version: "3.12"', "cache-dependency-path: requirements.txt"):
+            with self.subTest(line=line):
+                self.assertIn(line, self.lines)
+        self.assertEqual(self.text.count("- suite:"), 2)                  # two jobs, not one after the other: the same two commands as in the README
+
+    def test_it_asks_for_no_secret_and_cannot_reach_the_model(self):
+        self.assertIsNone(re.search(r"secrets\.|ANTHROPIC|DOORS_AI|api[-_ ]?key", self.text, re.IGNORECASE))
+        self.assertIn("contents: read", self.lines)                        # the only permission, and read only
+        self.assertEqual(self.text.count("permissions:"), 1)
+        self.assertIn("persist-credentials: false", self.lines)            # the checkout leaves no token behind: nothing here pushes
+
+    def test_the_browser_tests_get_the_flags_the_runner_needs_and_a_message_when_there_is_no_browser(self):
+        self.assertIn("CHROME_ARGS: --no-sandbox --disable-dev-shm-usage", self.lines)
+        self.assertIn("if command -v google-chrome > /dev/null; then", self.lines)
+        self.assertIn("google-chrome --version", self.lines)
+        self.assertTrue(any(line.startswith('echo "::warning::Google Chrome is not installed') and "are skipped" in line for line in self.lines))
+
+    def test_the_runner_and_the_actions_are_pinned_so_that_the_ground_does_not_move(self):
+        self.assertIn("runs-on: ubuntu-24.04", self.lines)                 # not ubuntu-latest, which moves to another image one day
+        uses = [line for line in self.lines if line.startswith("- uses:")]
+        self.assertEqual([line.split("@")[0] for line in uses], ["- uses: actions/checkout", "- uses: actions/setup-python"])
+        for line in uses:
+            self.assertRegex(line, r"@v\d+$")
+
+    def test_what_the_workflow_runs_is_what_the_readme_tells_to_run(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn(".venv/bin/python -m unittest discover -s tests", readme)
+        self.assertIn(".venv/bin/python -m pytest runs the same set", readme)
+        self.assertIn(".venv/bin/pip install -r requirements.txt", readme)
+
+
 class TheKeyAndTheSdk(unittest.TestCase):
     def test_no_file_holds_anything_shaped_like_a_key(self):
         """La clé de l'API n'est lue que dans l'environnement, par le SDK. Aucun fichier du dossier n'en contient une,

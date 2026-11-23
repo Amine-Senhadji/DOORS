@@ -18,6 +18,7 @@ import unittest
 from dataclasses import asdict, fields
 from pathlib import Path
 
+import browser
 from engine import worlds as W
 from engine.blocks import blocks_to_ops
 from engine.contract import World
@@ -429,7 +430,8 @@ class TheRoutes(unittest.TestCase):
             self.assertFalse(any("pas de crises combinées" in limit or "no combined crises" in limit for limit in limits))
 
 
-@unittest.skipIf(TestClient is None or test_web.CHROME is None, "Chrome n'est pas installé sur cette machine")
+@unittest.skipIf(TestClient is None, "FastAPI non installé : .venv/bin/pip install -r requirements.txt")
+@browser.needed
 class ThePage(unittest.TestCase):
     """Chrome sans fenêtre : un monde à deux crises donné dans l'adresse devient une pastille de plus, et tout l'écran le suit."""
 

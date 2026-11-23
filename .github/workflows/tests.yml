@@ -1,0 +1,59 @@
+# The tests, on every push to main and on every pull request: the whole suite, with unittest and with pytest, each in a
+# job of its own so that they run side by side.
+#
+# Nothing here needs a secret. No test calls a model, and the AI layer starts in recorded mode.
+# The tests that read the page in a browser use the Google Chrome that the runner brings. Where there is none they are
+# skipped, with the reason written next to each of them, and everything else runs (tests/browser.py, tests/test_browser.py).
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suite:
+    name: ${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: unittest
+            run: python -m unittest discover -s tests
+          - suite: pytest
+            run: python -m pytest -p no:cacheprovider -rs
+    env:
+      PYTHONUTF8: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      # The pages read by the browser tests are the ones of a server of this machine: the sandbox of the browser adds nothing here.
+      CHROME_ARGS: --no-sandbox --disable-dev-shm-usage
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install the dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Google Chrome
+        run: |
+          if command -v google-chrome > /dev/null; then
+            google-chrome --version
+          else
+            echo "::warning::Google Chrome is not installed on this runner: the tests that read the page in a browser are skipped."
+          fi
+      - name: Tests (${{ matrix.suite }})
+        run: ${{ matrix.run }}

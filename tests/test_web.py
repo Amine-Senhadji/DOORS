@@ -14,13 +14,14 @@ i18n.set_default("fr")      # ces tests attendent les phrases du moteur en fran�
 
 import html
 import re
-import shutil
 import socket
 import subprocess
 import threading
 import time
 import unittest
 from pathlib import Path
+
+import browser
 
 try:
     import uvicorn
@@ -33,8 +34,6 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
 OURS = [f for f in WEB.rglob("*") if f.is_file() and "vendor" not in f.parts and f.suffix in {".html", ".css", ".js"}]
 NEEDS_FASTAPI = "FastAPI non installé : .venv/bin/pip install -r requirements.txt"
-CHROME = next((p for p in ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                           shutil.which("google-chrome") or "", shutil.which("chromium") or ""] if p and Path(p).exists()), None)
 
 
 def read(file: Path) -> str:
@@ -178,9 +177,8 @@ def dom_of(path: str) -> str:
             if server.started:
                 break
             time.sleep(0.05)
-        return subprocess.run([CHROME, "--headless=new", "--window-size=1440,900", "--virtual-time-budget=9000",
-                               "--dump-dom", f"http://127.0.0.1:{port}{path}"],
-                              capture_output=True, text=True, timeout=60).stdout
+        return subprocess.run(browser.command("--window-size=1440,900", "--virtual-time-budget=9000", "--dump-dom", f"http://127.0.0.1:{port}{path}"),
+                              capture_output=True, text=True, timeout=120).stdout
     finally:
         server.should_exit = True
         thread.join(timeout=5)
@@ -215,7 +213,7 @@ def age_at(month: int, start: int) -> str:
 
 
 @unittest.skipIf(TestClient is None, NEEDS_FASTAPI)
-@unittest.skipIf(CHROME is None, "Chrome n'est pas installé sur cette machine")
+@browser.needed
 class InChrome(unittest.TestCase):
     """Chrome sans fenêtre : la page démarre, et ce qu'elle affiche est ce que l'API renvoie."""
 
